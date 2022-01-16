@@ -2,7 +2,7 @@
 
 Persistent data storage for temporary accumulation of structured logs before sending them to the server.
 
-## SquirrelStorage
+## addEvent
 
 ```dart
 import 'package:squirrel/squirrel.dart';
@@ -19,7 +19,7 @@ void main() {
 }
 ```
 
-## Contexts
+## addContext
 
 The entries can be grouped into "contexts".
 
