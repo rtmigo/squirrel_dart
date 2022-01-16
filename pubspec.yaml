@@ -9,7 +9,7 @@ environment:
 dependencies:
   hive: ^2.0.4
   slugid: ^1.1.0
-  synchronized: ^3.0.0
+
 
 dev_dependencies:
   test: ^1.5.1

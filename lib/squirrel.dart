@@ -6,7 +6,7 @@ import 'dart:math';
 
 import 'package:hive/hive.dart';
 import 'package:slugid/slugid.dart';
-import 'package:synchronized/synchronized.dart';
+
 
 class _MonotonicNow {
   final DateTime _startTime = DateTime.now().toUtc();
@@ -19,7 +19,6 @@ class _MonotonicNow {
     return this._startTime.add(this._stopwatch.elapsed);
   }
 }
-
 
 typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = void Function();
@@ -88,7 +87,6 @@ class SquirrelStorage {
       if (maxItemsTotal != null) {
         maxPerNextChunk = min(maxPerNextChunk, maxItemsTotal - itemsTaken);
       }
-      //print("max $maxPerNextChunk");
 
       final chunk = this.getChunk(maxPerNextChunk);
       if (chunk.isEmpty) {
@@ -155,6 +153,21 @@ class SquirrelContext {
   }
 }
 
+class _IgnoreParallelCalls {
+  bool _running = false;
+  Future<void> callAsync(Future<void> Function() func) async {
+    if (_running) {
+      return;
+    }
+    try {
+      _running = true;
+      await func();
+    } finally {
+      _running = false;
+    }
+  }
+}
+
 /// Этот объект берет на себя обработку [SquirrelStorage.onModified]. Когда внутри хранилища
 /// оказывается более либо равно чем [chunkSize] элементов, все они порционно скармливаются
 /// функции [send], а после удачного её запуска - удаляются.
@@ -176,23 +189,27 @@ class SquirrelSender {
 
   final Future<void> Function(List) send;
   final int chunkSize;
-  final _lock = Lock();
 
+
+  final _ignoreParallel = _IgnoreParallelCalls();
+  
   void handleOnModified(SquirrelStorage storage) async {
-    if (storage.length >= chunkSize) {
-      // мы будем отправлять не все элементы внутри storage, а ровно столько, сколько их сейчас.
-      // Иначе могло бы случиться, что в ходе отправки появились новые элементы. Например,
-      // chunkSize=100, к концу отправки их уже 102. И поэтому мы отправляем чанк размером всего
-      // 2 элемента.
-      int maxItemsTotal = storage.length;
-      int gotItemsSum = 0;
-      await _lock.synchronized(() async {
+    // работа этого метода может быть долгой и асинхронной. Предотвращаю параллельные запуски
+    // todo протестировать случай, когда send выбрасывает исключение
+    await _ignoreParallel.callAsync(() async {
+      if (storage.length >= chunkSize) {
+        // мы будем отправлять не все элементы внутри storage, а ровно столько, сколько их сейчас.
+        // Иначе могло бы случиться, что в ходе отправки появились новые элементы. Например,
+        // chunkSize=100, к концу отправки их уже 102. И поэтому мы отправляем чанк размером всего
+        // 2 элемента.
+        int maxItemsTotal = storage.length;
+        int gotItemsSum = 0;
+
         await for (final chunk
-            in storage.takeChunks(itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
+        in storage.takeChunks(itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
           assert((gotItemsSum += chunk.length) <= maxItemsTotal);
           await this.send(chunk.values.toList(growable: false));
         }
-      });
-    }
+    }});
   }
 }
