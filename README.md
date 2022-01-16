@@ -94,7 +94,7 @@ context.addEvent('my event');
 
 ## SquirrelSender
 
-SquirrelSender automates sending logs to an abstract server when the number of records in the
+`SquirrelSender` automates sending logs to an abstract server when the number of records in the
 database exceeds a given limit. It binds to the `onModified` handler.
 
 ```dart
