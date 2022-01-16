@@ -1,6 +1,7 @@
 # [squirrel](https://github.com/rtmigo/squirrel_dart)
 
-Persistent data storage for temporary accumulation of structured logs before sending them to the server.
+`SquirrelStorage` accumulates structured log entries in a file-based local storage before sending
+them to the server.
 
 ## addEvent
 
