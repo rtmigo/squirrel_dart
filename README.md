@@ -45,6 +45,8 @@ to the event entry. The server may restore the tree structure along with the con
 
 ## Data format
 
+### Events
+
 ```dart
 storage.root.addEvent({'a': 1, 'b':2});
 ```
@@ -62,6 +64,8 @@ storage.root.addEvent({'a': 1, 'b':2});
 var context = storage.root.addContext({'name': 'my context'});
 context.addEvent('my event');
 ```
+
+### Contexts
 
 ```dart
 [
