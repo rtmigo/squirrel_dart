@@ -46,7 +46,7 @@ to the event entry. The server may restore the tree structure along with the con
 ## Data format
 
 ```dart
-addEvent({'a': 1, 'b':2});
+storage.root.addEvent({'a': 1, 'b':2});
 ```
 
 ```dart
@@ -54,12 +54,12 @@ addEvent({'a': 1, 'b':2});
     'I':'U_sWAEJnR4epXu-TK0FCYA',  // totally unique Slugid for each entry
     'T': 194942647293470,          // time in microseconds since epoch UTC
     'D': {'a': 1, 'b':2},          // the actual data
-    'P': null                      // parent context
+    'P': null                      // parent context, null for root
 }
 ```
 
 ```dart
-var context = addContext({'name': 'my context'});
+var context = storage.root.addContext({'name': 'my context'});
 context.addEvent('my event');
 ```
 
