@@ -197,7 +197,6 @@ void main() {
   test("SquirrelSender", () async {
     int sent = 0;
     int calls = 0;
-    late SquirrelStorage sq;
 
     final sender = SquirrelSender(
         send: (chunk) async {
