@@ -20,6 +20,7 @@ class _MonotonicNow {
   }
 }
 
+
 typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = void Function();
 
