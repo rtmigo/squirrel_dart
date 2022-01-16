@@ -52,14 +52,12 @@ storage.root.addEvent({'a': 1, 'b':2});
 ```
 
 ```dart
-[
-    {
-        'I':'U_sWAEJnR4epXu-TK0FCYA',  // totally unique Slugid for each entry
-        'T': 194942647293470,          // time in microseconds since epoch UTC
-        'D': {'a': 1, 'b':2},          // the actual data
-        'P': null                      // parent context, null for root
-    }
-]
+{
+    'I':'U_sWAEJnR4epXu-TK0FCYA',  // totally unique Slugid for each entry
+    'T': 194942647293470,          // time in microseconds since epoch UTC
+    'D': {'a': 1, 'b':2},          // the actual data
+    'P': null                      // parent context, null for root
+}
 ```
 
 ```dart
@@ -70,23 +68,21 @@ context.addEvent('my event');
 ### Contexts as JSON data
 
 ```dart
-[
-    // the context is essentially an ordinary entry
-    {
-        'I': 'ti8C-AKGQsq3rDjSuXe94w', // unique context id
-        'T': 194942647293470,
-        'D': {'name': 'my context'},
-        'P': null
-    },
+// the context is essentially an ordinary entry
+{
+    'I': 'ti8C-AKGQsq3rDjSuXe94w', // unique context id
+    'T': 194942647293470,
+    'D': {'name': 'my context'},
+    'P': null
+},
 
-    // the child entry contains a reference to the parent context.
-    {
-        'I': 'Fum-zBhASyO50rg3mtQcD',
-        'T': 194942647223453,
-        'D': 'my event',
-        'P': 'ti8C-AKGQsq3rDjSuXe94w'  // link to the context id
-    }
-]
+// the child entry contains a reference to the parent context.
+{
+    'I': 'Fum-zBhASyO50rg3mtQcD',
+    'T': 194942647223453,
+    'D': 'my event',
+    'P': 'ti8C-AKGQsq3rDjSuXe94w'  // link to the context id
+}
 ```
 
 
