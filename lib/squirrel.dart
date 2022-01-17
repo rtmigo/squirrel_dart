@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:hive/hive.dart';
@@ -31,8 +32,10 @@ class SquirrelEntry {
   SquirrelEntry({required this.box, required this.id, this.onModified});
 
   Future<String> _putRecordToDb(String? parentId, dynamic data) async {
+    jsonEncode(data); // just checking the data can be encoded
     final String id = Slugid.v4().toString();
     final rec = {'I': id, 'T': _monoTime.now().microsecondsSinceEpoch, 'P': parentId, 'D': data};
+    //jsonEncode(object)
     await this.box.add(rec);
     this.onModified?.call();
 
@@ -64,7 +67,7 @@ class SquirrelEntry {
   // не дублировать данные.
 
 
-  Future<SquirrelEntry> add(Map<String, dynamic> data) async {
+  Future<SquirrelEntry> add(dynamic data) async {
     String id = await this._putRecordToDb(this.id, data);
     return SquirrelEntry(box: this.box, id: id, onModified: this.onModified);
   }
