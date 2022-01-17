@@ -20,8 +20,8 @@ void main() {
     SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test1');
     expect(sq.length, 0);
 
-    await sq.root.addEvent({'event': 'a'});
-    await sq.root.addEvent({'event': 'b'});
+    await sq.add({'event': 'a'});
+    await sq.add({'event': 'b'});
     var entries = sq.entries().toList();
     expect(entries.length, 2);
 
@@ -46,7 +46,7 @@ void main() {
   test("events are incrementing", () async {
     SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
     for (int i = 0; i < 5; ++i) {
-      database.root.addEvent({"x": i});
+      database.add({"x": i});
     }
 
     expect(database.entries().map((e) => e.value['D']['x']).toList(), [0, 1, 2, 3, 4]);
@@ -56,10 +56,10 @@ void main() {
     SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2');
     expect(sq.length, 0);
 
-    final context = await sq.root.addContext({'context': 'Ночь. Улица. Фонарь. Аптека.'});
+    final context = await sq.add({'context': 'Ночь. Улица. Фонарь. Аптека.'});
 
-    await context.addEvent({'event': 'a'});
-    await context.addEvent({'event': 'b'});
+    await context.add({'event': 'a'});
+    await context.add({'event': 'b'});
     final entries = sq.entries().toList();
     expect(entries.length, 3);
 
@@ -74,11 +74,11 @@ void main() {
   });
 
   test("chunk get remove", () async {
-    SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test3');
+    Squirrel sq = await Squirrel.create(boxName: 'test3');
     expect(sq.length, 0);
 
     for (int i = 0; i < 17; ++i) {
-      sq.root.addEvent({"x": i});
+      sq.add({"x": i});
     }
 
     // убедимся, что данные не удаляются, когда мы просто get
@@ -102,24 +102,24 @@ void main() {
 
   test("onModified", () async {
     int calls = 0;
-    SquirrelStorage db = await SquirrelStorage.create(boxName: 'test3', onModified: () => ++calls);
+    Squirrel db = await Squirrel.create(boxName: 'test3', onModified: () => ++calls);
 
     //db.onModified.(() { ++calls; });
-    await db.root.addEvent({'a': 1});
-    await db.root.addEvent({'b': 5});
+    await db.add({'a': 1});
+    await db.add({'b': 5});
     expect(calls, 2);
-    await db.root.addContext({'b': 5});
-    await db.root.addEvent({'b': 5});
-    await db.root.addContext({'x': 55});
+    await db.add({'b': 5});
+    await db.add({'b': 5});
+    await db.add({'x': 55});
     expect(calls, 5);
   });
 
   test("takeChunks list", () async {
-    SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
+    Squirrel database = await Squirrel.create(boxName: 'test');
     expect(database.length, 0);
 
     for (int i = 0; i < 17; ++i) {
-      await database.root.addEvent({"x": i});
+      await database.add({"x": i});
     }
 
     //await Future.delayed(const Duration(milliseconds: 500));
@@ -139,7 +139,7 @@ void main() {
     expect(database.length, 0);
 
     for (int i = 0; i < 50; ++i) {
-      await database.root.addEvent({"x": i});
+      await database.add({"x": i});
     }
 
     expect(database.length, 50);
@@ -166,7 +166,7 @@ void main() {
     expect(database.length, 0);
 
     for (int i = 0; i < 27; ++i) {
-      database.root.addEvent({"x": i});
+      database.add({"x": i});
     }
 
     int i = 0;
@@ -210,7 +210,7 @@ void main() {
         boxName: 'test', onModified: () => sender.handleOnModified(database));
 
     for (int i = 0; i < 55; ++i) {
-      await database.root.addEvent({'data': i});
+      await database.add({'data': i});
     }
     // поскольку все асинхронно, то на константы я не рассчитываю
     // (хоть и получаю одни и те же значения, это может быть случайностью)

@@ -23,14 +23,74 @@ class _MonotonicNow {
 typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = void Function();
 
-class SquirrelStorage {
-  SquirrelStorage._(this.box, {this.onModified}) {
-    this.root = SquirrelContext(storage: this, contextId: null);
-  }
-
+class SquirrelEntry {
+  final Box box;
+  final String? contextId;
   final VoidCallback? onModified;
 
-  Box box;
+  SquirrelEntry({required this.box, required this.contextId, this.onModified});
+
+  Future<String> _putRecordToDb(String? parentId, dynamic data) async {
+    final String id = Slugid.v4().toString();
+    final rec = {'I': id, 'T': _monoTime.now().microsecondsSinceEpoch, 'P': parentId, 'D': data};
+    await this.box.add(rec);
+    this.onModified?.call();
+
+    return id;
+  }
+
+  // формат примерно такой:
+  //    recordUuid: {
+  //      'T': microsecondsSinceEpoch,
+  //      'P': parentRecordId,
+  //      'D': dynamicData
+  //    }
+  //
+  // У каждой записи recordUuid - абсолютно уникальный идентификатор. Так что даже когда такие
+  // записи соберутся на сервере, они по-прежнему будут идентифицироваться теми же uuid.
+  //
+  // 'p' позволяет задавать "родительские" узлы (контексты). Скорее всего, при запуске приложения
+  // я задаю контекст. Например такой:
+  // contextRecordUuid: {
+  //    'T': microsecondsSinceEpoch,
+  //    'P': null,
+  //    'D' {
+  //      'userName': ...,
+  //      'androidVersion': ...,
+  //      'appVersion': ...,
+  //    }
+  //
+  // Остальные события далее будут ссылаться на этот контекст (по значению contextRecordUuid), но
+  // не дублировать данные.
+
+
+  Future<SquirrelEntry> add(Map<String, dynamic> data) async {
+    String id = await this._putRecordToDb(this.contextId, data);
+    return SquirrelEntry(box: this.box, contextId: id, onModified: this.onModified);
+  }
+
+  @Deprecated("Use squirrel.add()")  // since 2022-01
+  Future<String> addEvent(Map<String, dynamic> data) async {
+    return (await add(data)).contextId!;
+  }
+
+  @Deprecated("Use context = squirrel.add()")  // since 2022-01
+  Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
+    return add(data);
+    //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
+    //return SquirrelEntry(storage: this.storage, contextId: subContextId);
+  }
+}
+
+class SquirrelStorage extends SquirrelEntry {
+  SquirrelStorage._(Box box, {VoidCallback? onModified}): super(box: box, contextId: null, onModified: onModified);
+  // {
+  //   //this.root = SquirrelEntry(storage: this, contextId: null);
+  // }
+
+  //final VoidCallback? onModified;
+
+  //Box box;
 
   /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await Hive.initFlutter`.
   ///
@@ -98,60 +158,15 @@ class SquirrelStorage {
     }
   }
 
-  late final SquirrelContext root;
+  @Deprecated("Use object methods directly (squirrel.add instead squirrel.root.add)")  // 2022-01
+  SquirrelEntry get root => this;
 }
+
+typedef Squirrel = SquirrelStorage;
 
 final _monoTime = _MonotonicNow();
 
-class SquirrelContext {
-  Box get box => storage.box;
-  final String? contextId;
-  final SquirrelStorage storage;
 
-  SquirrelContext({required this.storage, required this.contextId});
-
-  Future<String> _putRecordToDb(String? parentId, dynamic data) async {
-    final String id = Slugid.v4().toString();
-    final rec = {'I': id, 'T': _monoTime.now().microsecondsSinceEpoch, 'P': parentId, 'D': data};
-    await this.box.add(rec);
-    this.storage.onModified?.call();
-
-    return id;
-  }
-
-  // формат примерно такой:
-  //    recordUuid: {
-  //      'T': microsecondsSinceEpoch,
-  //      'P': parentRecordId,
-  //      'D': dynamicData
-  //    }
-  //
-  // У каждой записи recordUuid - абсолютно уникальный идентификатор. Так что даже когда такие
-  // записи соберутся на сервере, они по-прежнему будут идентифицироваться теми же uuid.
-  //
-  // 'p' позволяет задавать "родительские" узлы (контексты). Скорее всего, при запуске приложения
-  // я задаю контекст. Например такой:
-  // contextRecordUuid: {
-  //    'T': microsecondsSinceEpoch,
-  //    'P': null,
-  //    'D' {
-  //      'userName': ...,
-  //      'androidVersion': ...,
-  //      'appVersion': ...,
-  //    }
-  //
-  // Остальные события далее будут ссылаться на этот контекст (по значению contextRecordUuid), но
-  // не дублировать данные.
-
-  Future<String> addEvent(Map<String, dynamic> data) {
-    return this._putRecordToDb(this.contextId, data);
-  }
-
-  Future<SquirrelContext> addContext(Map<String, dynamic> data) async {
-    final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
-    return SquirrelContext(storage: this.storage, contextId: subContextId);
-  }
-}
 
 class _IgnoreParallelCalls {
   bool _running = false;
