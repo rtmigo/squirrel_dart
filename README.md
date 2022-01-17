@@ -114,7 +114,7 @@ Future<void> sendToServer(List<dynamic> chunk) await {
 
 void main()
    final sender = SquirrelSender(send: sendToServer);
-   late SquirrelStorage squirrel;
+   late Squirrel squirrel;
    squirrel = await Squirrel.create(
      onModified: () => sender.handleOnModified(squirrel));
    // ...
