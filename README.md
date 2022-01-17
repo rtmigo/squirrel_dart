@@ -1,6 +1,6 @@
 # [squirrel](https://github.com/rtmigo/squirrel_dart)
 
-`SquirrelStorage` accumulates structured log entries in a file-based local storage before sending them to the server.
+`Squirrel` accumulates structured log entries in a file-based local storage before sending them to the server.
 
 ## Adding entries
 
