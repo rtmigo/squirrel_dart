@@ -1,11 +1,17 @@
 // SPDX-FileCopyrightText: (c) 2021 Artёm IG <github.com/rtmigo>
 // SPDX-License-Identifier: MIT
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:hive/hive.dart';
 import 'package:squirrel/squirrel.dart';
 import 'package:test/test.dart';
+
+class NonJsonSerializable {
+
+}
+
 
 void main() {
   setUp(() {
@@ -71,6 +77,17 @@ void main() {
     // события ссылаются на контекст
     expect(entries[1].value['P'], context.id);
     expect(entries[2].value['P'], context.id);
+  });
+
+  test("adding json-incompatible data throws error", () async {
+    Squirrel squirrel = await Squirrel.create(boxName: 'test3');
+    squirrel.add(1);
+    squirrel.add(1.5);
+    squirrel.add('string');
+    squirrel.add({'key': 123});
+    squirrel.add([1, 2, 3]);
+
+    expect(()=>squirrel.add(NonJsonSerializable()), throwsA(isA<JsonUnsupportedObjectError>()));
   });
 
   test("chunk get remove", () async {
