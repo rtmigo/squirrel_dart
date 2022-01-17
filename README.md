@@ -2,7 +2,7 @@
 
 `SquirrelStorage` accumulates structured log entries in a file-based local storage before sending them to the server.
 
-## Add
+## Adding entries
 
 ```dart
 import 'package:squirrel/squirrel.dart';
@@ -23,9 +23,9 @@ void main() {
 }
 ```
 
-## Child entries
+## Adding child entries
 
-The entries can be grouped like that:
+Each entry can have a child entry.
 
 ```dart
 import 'package:squirrel/squirrel.dart';
@@ -42,6 +42,8 @@ void main() {
     await parentB.add({'move': 'D7-D5'});
 }
 ```
+
+Child nodes can be nested. You can create a tree-like structure of any depth.
 
 ## Data format
 
