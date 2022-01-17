@@ -64,13 +64,13 @@ void main() {
     expect(entries.length, 3);
 
     // контекст содержит данные
-    expect(entries[0].value['I'], context.contextId);
+    expect(entries[0].value['I'], context.id);
     expect(entries[0].value['P'], null);
     expect(entries[0].value['D'], {'context': 'Ночь. Улица. Фонарь. Аптека.'});
 
     // события ссылаются на контекст
-    expect(entries[1].value['P'], context.contextId);
-    expect(entries[2].value['P'], context.contextId);
+    expect(entries[1].value['P'], context.id);
+    expect(entries[2].value['P'], context.id);
   });
 
   test("chunk get remove", () async {

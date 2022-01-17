@@ -25,10 +25,10 @@ typedef VoidCallback = void Function();
 
 class SquirrelEntry {
   final Box box;
-  final String? contextId;
+  final String? id;
   final VoidCallback? onModified;
 
-  SquirrelEntry({required this.box, required this.contextId, this.onModified});
+  SquirrelEntry({required this.box, required this.id, this.onModified});
 
   Future<String> _putRecordToDb(String? parentId, dynamic data) async {
     final String id = Slugid.v4().toString();
@@ -65,13 +65,13 @@ class SquirrelEntry {
 
 
   Future<SquirrelEntry> add(Map<String, dynamic> data) async {
-    String id = await this._putRecordToDb(this.contextId, data);
-    return SquirrelEntry(box: this.box, contextId: id, onModified: this.onModified);
+    String id = await this._putRecordToDb(this.id, data);
+    return SquirrelEntry(box: this.box, id: id, onModified: this.onModified);
   }
 
   @Deprecated("Use squirrel.add()")  // since 2022-01
   Future<String> addEvent(Map<String, dynamic> data) async {
-    return (await add(data)).contextId!;
+    return (await add(data)).id!;
   }
 
   @Deprecated("Use context = squirrel.add()")  // since 2022-01
@@ -83,14 +83,7 @@ class SquirrelEntry {
 }
 
 class SquirrelStorage extends SquirrelEntry {
-  SquirrelStorage._(Box box, {VoidCallback? onModified}): super(box: box, contextId: null, onModified: onModified);
-  // {
-  //   //this.root = SquirrelEntry(storage: this, contextId: null);
-  // }
-
-  //final VoidCallback? onModified;
-
-  //Box box;
+  SquirrelStorage._(Box box, {VoidCallback? onModified}): super(box: box, id: null, onModified: onModified);
 
   /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await Hive.initFlutter`.
   ///
