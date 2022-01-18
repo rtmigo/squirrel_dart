@@ -1,4 +1,4 @@
-*This library is a raw workpiece. It should not be used by anyone.*
+**This library is a raw workpiece. It should not be used by anyone.**
 
 # [squirrel](https://github.com/rtmigo/squirrel_dart)
 
