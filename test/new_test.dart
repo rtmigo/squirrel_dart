@@ -211,27 +211,5 @@ void main() {
     expect(i, 3);
   });
 
-  test("SquirrelSender", () async {
-    int sent = 0;
-    int calls = 0;
 
-    final sender = SquirrelSender(
-        send: (chunk) async {
-          //print("CALL");
-          calls++;
-          sent += chunk.length;
-        },
-        chunkSize: 10);
-    late SquirrelStorage database;
-    database = await SquirrelStorage.create(
-        boxName: 'test', onModified: () => sender.handleOnModified(database));
-
-    for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i});
-    }
-    // поскольку все асинхронно, то на константы я не рассчитываю
-    // (хоть и получаю одни и те же значения, это может быть случайностью)
-    expect(calls, 5);
-    expect(sent, 50);
-  });
 }

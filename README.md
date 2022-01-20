@@ -1,6 +1,12 @@
+**This library is a raw workpiece. It should not be used by anyone.**
+
 # [squirrel](https://github.com/rtmigo/squirrel_dart)
 
-`SquirrelStorage` accumulates structured log entries in a file-based local storage before sending them to the server.
+`Squirrel` is a FIFO queue. The queue is stored in the file system and persists across application restarts.
+
+Queue elements are any JSON-compatible objects (`Map`, `List`, `Set`, `String`, `int`, `double`, `null`). Also, each element of the queue has a unique identifier, a timestamp, and an optional reference to the parent element.
+
+`Squirrel` is intended to be a temporary buffer for storing log data before sending it to the server. Upon request, the object returns its elements grouped into chunks. Iterators allow both simple reading of elements, and reading with automatic deletion after sending.
 
 ## Adding entries
 
@@ -116,7 +122,9 @@ void main()
    final sender = SquirrelSender(send: sendToServer);
    late Squirrel squirrel;
    squirrel = await Squirrel.create(
-     onModified: () => sender.handleOnModified(squirrel));
+     onModified: () => sender.handleModified(squirrel),
+     onSendingTrigger: ()=> sender.handleSendingTrigger(squirrel),
+);
    // ...
    // use Squirrel as usual
 }

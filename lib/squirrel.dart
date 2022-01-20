@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: (c) 2021 Artёm IG <github.com/rtmigo>
 // SPDX-License-Identifier: MIT
 
+import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
 import 'package:hive/hive.dart';
 import 'package:slugid/slugid.dart';
-
+import 'package:synchronized/synchronized.dart';
 
 class _MonotonicNow {
   final DateTime _startTime = DateTime.now().toUtc();
@@ -22,14 +23,15 @@ class _MonotonicNow {
 }
 
 typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
-typedef VoidCallback = void Function();
+typedef VoidCallback = FutureOr<void> Function();
 
 class SquirrelEntry {
   final Box box;
   final String? id;
   final VoidCallback? onModified;
+  final VoidCallback? onSendingTrigger;
 
-  SquirrelEntry({required this.box, required this.id, this.onModified});
+  SquirrelEntry({required this.box, required this.id, this.onModified, this.onSendingTrigger});
 
   Future<String> _putRecordToDb(String? parentId, dynamic data) async {
     jsonEncode(data); // just checking the data can be encoded
@@ -66,18 +68,24 @@ class SquirrelEntry {
   // Остальные события далее будут ссылаться на этот контекст (по значению contextRecordUuid), но
   // не дублировать данные.
 
-
   Future<SquirrelEntry> add(dynamic data) async {
     String id = await this._putRecordToDb(this.id, data);
     return SquirrelEntry(box: this.box, id: id, onModified: this.onModified);
   }
 
-  @Deprecated("Use squirrel.add()")  // since 2022-01
+  /// Calls [onSendingTrigger] handler.
+  FutureOr<void> triggerSending() {
+    if (this.onSendingTrigger != null) {
+      return this.onSendingTrigger?.call();
+    }
+  }
+
+  @Deprecated("Use squirrel.add()") // since 2022-01
   Future<String> addEvent(Map<String, dynamic> data) async {
     return (await add(data)).id!;
   }
 
-  @Deprecated("Use context = squirrel.add()")  // since 2022-01
+  @Deprecated("Use context = squirrel.add()") // since 2022-01
   Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
     return add(data);
     //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
@@ -86,16 +94,21 @@ class SquirrelEntry {
 }
 
 class SquirrelStorage extends SquirrelEntry {
-  SquirrelStorage._(Box box, {VoidCallback? onModified}): super(box: box, id: null, onModified: onModified);
+  SquirrelStorage._(Box box, {VoidCallback? onModified, VoidCallback? onSendingTrigger})
+      : super(box: box, id: null, onModified: onModified, onSendingTrigger: onSendingTrigger);
 
   /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await Hive.initFlutter`.
   ///
   /// Здесь это не делается автоматически, поскольку база Hive едина для всего приложения
   /// (и в этом плане у меня выбора нет). Ее стоит инициализировать отдельно и осознанно:
   /// передавая ей путь, например.
-  static Future<SquirrelStorage> create(
-      {String boxName = 'squirrel', VoidCallback? onModified}) async {
-    return SquirrelStorage._(await Hive.openBox(boxName), onModified: onModified);
+  static Future<SquirrelStorage> create({
+    String boxName = 'squirrel',
+    VoidCallback? onModified,
+    VoidCallback? onSendingTrigger,
+  }) async {
+    return SquirrelStorage._(await Hive.openBox(boxName),
+        onModified: onModified, onSendingTrigger: onSendingTrigger);
   }
 
   Iterable<MapEntry<int, dynamic>> entries() sync* {
@@ -154,30 +167,13 @@ class SquirrelStorage extends SquirrelEntry {
     }
   }
 
-  @Deprecated("Use object methods directly (squirrel.add instead squirrel.root.add)")  // 2022-01
+  @Deprecated("Use object methods directly (squirrel.add instead squirrel.root.add)") // 2022-01
   SquirrelEntry get root => this;
 }
 
 typedef Squirrel = SquirrelStorage;
 
 final _monoTime = _MonotonicNow();
-
-
-
-class _IgnoreParallelCalls {
-  bool _running = false;
-  Future<void> callAsync(Future<void> Function() func) async {
-    if (_running) {
-      return;
-    }
-    try {
-      _running = true;
-      await func();
-    } finally {
-      _running = false;
-    }
-  }
-}
 
 /// Этот объект берет на себя обработку [SquirrelStorage.onModified]. Когда внутри хранилища
 /// оказывается более либо равно чем [chunkSize] элементов, все они порционно скармливаются
@@ -201,27 +197,42 @@ class SquirrelSender {
   final Future<void> Function(List) send;
   final int chunkSize;
 
+  // todo test we're not sending in parallel
+  final _sendingLock = Lock();
 
-  final _ignoreParallel = _IgnoreParallelCalls();
-  
-  void handleOnModified(SquirrelStorage storage) async {
+  Future<void> _synchronizedSendAll(SquirrelStorage storage) async {
+    await this._sendingLock.synchronized(() async {
+      // мы будем отправлять не все элементы внутри storage, а ровно столько, сколько их сейчас.
+      // Иначе могло бы случиться, что в ходе отправки появились новые элементы. Например,
+      // chunkSize=100, к концу отправки их уже 102. И поэтому мы отправляем чанк размером всего
+      // 2 элемента.
+      int maxItemsTotal = storage.length;
+      int gotItemsSum = 0;
+
+      await for (final chunk
+          in storage.takeChunks(itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
+        assert((gotItemsSum += chunk.length) <= maxItemsTotal);
+        await this.send(chunk.values.toList(growable: false));
+      }
+    });
+  }
+
+  Future<void> handleSendingTrigger(SquirrelStorage storage) => _synchronizedSendAll(storage);
+
+  void handleModified(SquirrelStorage storage) async {
     // работа этого метода может быть долгой и асинхронной. Предотвращаю параллельные запуски
     // todo протестировать случай, когда send выбрасывает исключение
-    await _ignoreParallel.callAsync(() async {
-      if (storage.length >= chunkSize) {
-        // мы будем отправлять не все элементы внутри storage, а ровно столько, сколько их сейчас.
-        // Иначе могло бы случиться, что в ходе отправки появились новые элементы. Например,
-        // chunkSize=100, к концу отправки их уже 102. И поэтому мы отправляем чанк размером всего
-        // 2 элемента.
-        int maxItemsTotal = storage.length;
-        int gotItemsSum = 0;
+    if (this._sendingLock.locked) {
+      // мы бы могли дождаться окончания lock, и далее обработать наше событие.
+      // Но lock может быть занят долго. А событие onModified может происходить очень часто.
+      // Становясь сейчас в очередь, мы бы рисковали создать очередь из тысяч элементов.
+      // Когда лог освободится, тысячи элементов придется обрабатывать, сильно тормозя приложение.
+      // Чтобы избежать будущих тормозов, мы просто игнорируем событие.
+      return;
+    }
 
-        await for (final chunk
-        in storage.takeChunks(itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
-          assert((gotItemsSum += chunk.length) <= maxItemsTotal);
-          await this.send(chunk.values.toList(growable: false));
-        }
-    }});
+    if (storage.length >= chunkSize) {
+      await this._synchronizedSendAll(storage);
+    }
   }
 }
-
