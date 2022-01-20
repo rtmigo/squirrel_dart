@@ -79,6 +79,26 @@ void main() {
     expect(entries[2].value['P'], context.id);
   });
 
+  test("handlers are assigned", () async {
+    void sending() {}
+    void modified() {}
+
+    expect(sending, isNot(equals((modified))));
+
+    SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2', onSendingTrigger: sending, onModified: modified);
+
+    // checking that method `create` and the constructor correctly assigned the handlers
+    // to fields
+    expect(sq.onSendingTrigger, equals(sending));
+    expect(sq.onModified, equals(modified));
+
+    final e = await (await sq.add('sub')).add('subsub');
+
+    // checking that child objects also received the correct handlers
+    expect(e.onSendingTrigger, equals(sending));
+    expect(e.onModified, equals(modified));
+  });
+
   test("adding json-incompatible data throws error", () async {
     Squirrel squirrel = await Squirrel.create(boxName: 'test3');
     squirrel.add(1);

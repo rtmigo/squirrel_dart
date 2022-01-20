@@ -31,7 +31,7 @@ class SquirrelEntry {
   final VoidCallback? onModified;
   final VoidCallback? onSendingTrigger;
 
-  SquirrelEntry({required this.box, required this.id, this.onModified, this.onSendingTrigger});
+  SquirrelEntry({required this.box, required this.id, required this.onModified, required this.onSendingTrigger});
 
   Future<String> _putRecordToDb(String? parentId, dynamic data) async {
     jsonEncode(data); // just checking the data can be encoded
@@ -70,7 +70,12 @@ class SquirrelEntry {
 
   Future<SquirrelEntry> add(dynamic data) async {
     String id = await this._putRecordToDb(this.id, data);
-    return SquirrelEntry(box: this.box, id: id, onModified: this.onModified);
+    return SquirrelEntry(
+        box: this.box,
+        id: id,
+        onModified: this.onModified,
+        onSendingTrigger: this.onSendingTrigger
+    );
   }
 
   /// Calls [onSendingTrigger] handler.
