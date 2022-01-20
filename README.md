@@ -122,7 +122,9 @@ void main()
    final sender = SquirrelSender(send: sendToServer);
    late Squirrel squirrel;
    squirrel = await Squirrel.create(
-     onModified: () => sender.handleOnModified(squirrel));
+     onModified: () => sender.handleModified(squirrel),
+     onSendingTrigger: ()=> sender.handleSendingTrigger(squirrel),
+);
    // ...
    // use Squirrel as usual
 }
