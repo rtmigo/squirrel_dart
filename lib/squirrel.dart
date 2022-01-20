@@ -24,7 +24,6 @@ class _MonotonicNow {
 
 typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = FutureOr<void> Function();
-//typedef VoidCallbackAsync = FutureOr<void> Function();
 
 class SquirrelEntry {
   final Box box;
@@ -76,7 +75,7 @@ class SquirrelEntry {
 
   /// Calls [onSendingTrigger] handler.
   FutureOr<void> triggerSending() {
-    if (this.onSendingTrigger!=null) {
+    if (this.onSendingTrigger != null) {
       return this.onSendingTrigger?.call();
     }
   }
@@ -103,12 +102,13 @@ class SquirrelStorage extends SquirrelEntry {
   /// Здесь это не делается автоматически, поскольку база Hive едина для всего приложения
   /// (и в этом плане у меня выбора нет). Ее стоит инициализировать отдельно и осознанно:
   /// передавая ей путь, например.
-  static Future<SquirrelStorage> create(
-      {String boxName = 'squirrel',
-        VoidCallback? onModified,
-        VoidCallback? onSendingTrigger,
-      }) async {
-    return SquirrelStorage._(await Hive.openBox(boxName), onModified: onModified, onSendingTrigger: onSendingTrigger);
+  static Future<SquirrelStorage> create({
+    String boxName = 'squirrel',
+    VoidCallback? onModified,
+    VoidCallback? onSendingTrigger,
+  }) async {
+    return SquirrelStorage._(await Hive.openBox(boxName),
+        onModified: onModified, onSendingTrigger: onSendingTrigger);
   }
 
   Iterable<MapEntry<int, dynamic>> entries() sync* {
@@ -174,23 +174,6 @@ class SquirrelStorage extends SquirrelEntry {
 typedef Squirrel = SquirrelStorage;
 
 final _monoTime = _MonotonicNow();
-
-class _IgnoreParallelCalls {
-  // не используется с 2022-01 (?)
-  bool _running = false;
-
-  Future<void> callAsync(Future<void> Function() func) async {
-    if (_running) {
-      return;
-    }
-    try {
-      _running = true;
-      await func();
-    } finally {
-      _running = false;
-    }
-  }
-}
 
 /// Этот объект берет на себя обработку [SquirrelStorage.onModified]. Когда внутри хранилища
 /// оказывается более либо равно чем [chunkSize] элементов, все они порционно скармливаются
