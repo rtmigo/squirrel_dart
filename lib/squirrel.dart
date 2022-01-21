@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:hive/hive.dart';
+import 'package:meta/meta.dart';
 import 'package:slugid/slugid.dart';
 import 'package:synchronized/synchronized.dart';
 
@@ -31,7 +32,10 @@ class SquirrelEntry {
   final Box box;
   final String? id;
 
+  @protected
   final VoidCallback? onModified;
+
+  @protected
   final VoidCallback? onSendingTrigger;
 
   SquirrelEntry(
