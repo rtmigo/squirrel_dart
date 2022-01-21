@@ -10,6 +10,8 @@ import 'package:hive/hive.dart';
 import 'package:slugid/slugid.dart';
 import 'package:synchronized/synchronized.dart';
 
+const _defaultBoxName = 'squirrel';
+
 class _MonotonicNow {
   final DateTime _startTime = DateTime.now().toUtc();
   final Stopwatch _stopwatch = Stopwatch()..start();
@@ -28,10 +30,15 @@ typedef VoidCallback = FutureOr<void> Function();
 class SquirrelEntry {
   final Box box;
   final String? id;
+
   final VoidCallback? onModified;
   final VoidCallback? onSendingTrigger;
 
-  SquirrelEntry({required this.box, required this.id, required this.onModified, required this.onSendingTrigger});
+  SquirrelEntry(
+      {required this.box,
+      required this.id,
+      required this.onModified,
+      required this.onSendingTrigger});
 
   Future<String> _putRecordToDb(String? parentId, dynamic data) async {
     jsonEncode(data); // just checking the data can be encoded
@@ -74,8 +81,7 @@ class SquirrelEntry {
         box: this.box,
         id: id,
         onModified: this.onModified,
-        onSendingTrigger: this.onSendingTrigger
-    );
+        onSendingTrigger: this.onSendingTrigger);
   }
 
   /// Calls [onSendingTrigger] handler.
@@ -108,7 +114,7 @@ class SquirrelStorage extends SquirrelEntry {
   /// (и в этом плане у меня выбора нет). Ее стоит инициализировать отдельно и осознанно:
   /// передавая ей путь, например.
   static Future<SquirrelStorage> create({
-    String boxName = 'squirrel',
+    String boxName = _defaultBoxName,
     VoidCallback? onModified,
     VoidCallback? onSendingTrigger,
   }) async {
@@ -180,6 +186,8 @@ typedef Squirrel = SquirrelStorage;
 
 final _monoTime = _MonotonicNow();
 
+typedef SendCallback = Future<void> Function(List<dynamic>);
+
 /// Этот объект берет на себя обработку [SquirrelStorage.onModified]. Когда внутри хранилища
 /// оказывается более либо равно чем [chunkSize] элементов, все они порционно скармливаются
 /// функции [send], а после удачного её запуска - удаляются.
@@ -199,7 +207,7 @@ final _monoTime = _MonotonicNow();
 class SquirrelSender {
   SquirrelSender({this.chunkSize = 100, required this.send});
 
-  final Future<void> Function(List) send;
+  final SendCallback send;
   final int chunkSize;
 
   // todo test we're not sending in parallel
@@ -239,5 +247,19 @@ class SquirrelSender {
     if (storage.length >= chunkSize) {
       await this._synchronizedSendAll(storage);
     }
+  }
+
+  /// Creates a [Squirrel] instance with handlers assigned to a [SquirrelSender].
+  static Future<Squirrel> create(SendCallback sendToServer,
+      {String boxName = _defaultBoxName}) async {
+    // todo test this function
+    final sender = SquirrelSender(send: sendToServer);
+    late Squirrel squirrel;
+    squirrel = await Squirrel.create(
+      onModified: () => sender.handleModified(squirrel),
+      onSendingTrigger: () => sender.handleSendingTrigger(squirrel),
+      boxName: boxName  // todo test this param
+    );
+    return squirrel;
   }
 }
