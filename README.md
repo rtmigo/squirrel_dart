@@ -107,24 +107,21 @@ await parent.add('child B');
 
 ## SquirrelSender
 
-`SquirrelSender` automates sending logs to an abstract server when the number of records in the database exceeds a given limit (100 entries by default). It binds to the`onModified` handler.
+`SquirrelSender` automates sending logs to an abstract server when the number of records in the database exceeds a given limit (100 entries by default). It handes to the`onModified` and `onSendingTrigger` events.
 
 ```dart
 import 'package:squirrel/squirrel.dart';
 
-Future<void> sendToServer(List<dynamic> chunk) await {
+Future<void> sendToServer(List<dynamic> chunk) async {
   // this function will receive data to be sent.
+  // Each item of the list is convertible to JSON.
+
   // If the data cannot be sent (for example, due to connection errors),
   // the function should throw an exception.
 }
 
 void main()
-   final sender = SquirrelSender(send: sendToServer);
-   late Squirrel squirrel;
-   squirrel = await Squirrel.create(
-     onModified: () => sender.handleModified(squirrel),
-     onSendingTrigger: ()=> sender.handleSendingTrigger(squirrel),
-);
+   final squirrel = SquirrelSender.create(sendToServer);
    // ...
    // use Squirrel as usual
 }
