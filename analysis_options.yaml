@@ -1,15 +1,27 @@
-# default set of lint rules enforced for projects at Google
-# https://github.com/dart-lang/pedantic#enabled-lints
 include: package:lints/recommended.yaml
 
-# http://dart-lang.github.io/linter/lints
+analyzer:
+  language:
+    strict-casts: true
+    strict-raw-types: true
+    strict-inference: true
+
+  errors:
+    unawaited_futures: error
+    unrelated_type_equality_checks: error
+    tighten_type_of_initializing_formals: error
+
 linter:
   rules:
-    omit_local_variable_types: false
     unnecessary_this: false
-    await_only_futures: true
-
-analyzer:
-#   exclude:
-#     - path/to/excluded/files/**
-
+    constant_identifier_names: false
+    avoid_print: false
+    unawaited_futures: true
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+    always_declare_return_types: true
+    unrelated_type_equality_checks: true
+    tighten_type_of_initializing_formals: true
+    unnecessary_lambdas: true
+    use_decorated_box: true
+    use_colored_box: true

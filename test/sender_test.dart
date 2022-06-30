@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:hive/hive.dart';
+import 'package:jsontree/jsontree.dart';
 import 'package:squirrel/squirrel.dart';
 import 'package:test/test.dart';
 
@@ -39,7 +40,7 @@ void main() {
         boxName: 'test', onModified: () => cc.sender.handleModified(database));
 
     for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i});
+      await database.add({'data': i.jsonNode}.jsonNode);
     }
 
     expect(cc.calls, 5);
@@ -54,7 +55,7 @@ void main() {
         boxName: 'test', onSendingTrigger: () => cc.sender.handleSendingTrigger(database));
 
     for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i});
+      await database.add({'data': i.jsonNode}.jsonNode);
     }
 
     expect(cc.calls, 0);
@@ -76,7 +77,7 @@ void main() {
         onSendingTrigger: () => cc.sender.handleSendingTrigger(database));
 
     for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i});
+      await database.add({'data': i.jsonNode}.jsonNode);
     }
 
     expect(cc.calls, 5);

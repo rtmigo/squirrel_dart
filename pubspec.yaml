@@ -1,17 +1,20 @@
 name: squirrel
 description: "Accumulates structured log entries in a file-based local storage before sending them
               to the server."
-version: 0.4.1
+version: 1.0.0
+publish_to: 'none'
 homepage: https://github.com/rtmigo/squirrel_dart
 
 environment:
-  sdk: ">=2.15.0 <3.0.0"
+  sdk: ">=2.17.0 <3.0.0"
 
 dependencies:
   meta: ^1.7.0
   synchronized: ^3.0.0
   hive: ^2.0.4
   slugid: ^1.1.0
+  jsontree:
+    git: https://github.com/rtmigo/jsontree_dart
 
 dev_dependencies:
   test: ^1.5.1
