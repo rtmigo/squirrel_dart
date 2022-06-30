@@ -30,7 +30,7 @@ typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = FutureOr<void> Function();
 
 class SquirrelEntry {
-  final Box box;
+  final Box<Map<String, dynamic>> box;
   final String? id;
 
   @protected
@@ -85,7 +85,7 @@ class SquirrelEntry {
   // не дублировать данные.
 
   Future<SquirrelEntry> add(JsonNode data) async {
-    String id = await this._putRecordToDb(this.id, data);
+    final String id = await this._putRecordToDb(this.id, data);
     return SquirrelEntry(
         box: this.box,
         id: id,
@@ -114,7 +114,7 @@ class SquirrelEntry {
 }
 
 class SquirrelStorage extends SquirrelEntry {
-  SquirrelStorage._(Box box, {VoidCallback? onModified, VoidCallback? onSendingTrigger})
+  SquirrelStorage._(Box<Map<String, dynamic>> box, {VoidCallback? onModified, VoidCallback? onSendingTrigger})
       : super(box: box, id: null, onModified: onModified, onSendingTrigger: onSendingTrigger);
 
   /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await Hive.initFlutter`.
@@ -228,7 +228,7 @@ class SquirrelSender {
       // Иначе могло бы случиться, что в ходе отправки появились новые элементы. Например,
       // chunkSize=100, к концу отправки их уже 102. И поэтому мы отправляем чанк размером всего
       // 2 элемента.
-      int maxItemsTotal = storage.length;
+      final int maxItemsTotal = storage.length;
       int gotItemsSum = 0;
 
       await for (final chunk
