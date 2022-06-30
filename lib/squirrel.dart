@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:hive/hive.dart';
+import 'package:jsontree/jsontree.dart';
 import 'package:meta/meta.dart';
 import 'package:slugid/slugid.dart';
 import 'package:synchronized/synchronized.dart';
@@ -44,12 +45,16 @@ class SquirrelEntry {
       required this.onModified,
       required this.onSendingTrigger});
 
-  Future<String> _putRecordToDb(String? parentId, dynamic data) async {
+  Future<String> _putRecordToDb(String? parentId, JsonNode data) async {
     jsonEncode(data); // just checking the data can be encoded
     final String id = Slugid.v4().toString();
-    final rec = {'I': id, 'T': _monoTime.now().microsecondsSinceEpoch, 'P': parentId, 'D': data};
+    final rec = {
+      'I': id.jsonNode,
+      'T': _monoTime.now().microsecondsSinceEpoch.jsonNode,
+      'P': parentId == null ? JsonNull() : parentId.jsonNode,
+      'D': data}.jsonNode;
     //jsonEncode(object)
-    await this.box.add(rec);
+    await this.box.add(rec.toJson());
     this.onModified?.call();
 
     return id;
@@ -79,7 +84,7 @@ class SquirrelEntry {
   // Остальные события далее будут ссылаться на этот контекст (по значению contextRecordUuid), но
   // не дублировать данные.
 
-  Future<SquirrelEntry> add(dynamic data) async {
+  Future<SquirrelEntry> add(JsonNode data) async {
     String id = await this._putRecordToDb(this.id, data);
     return SquirrelEntry(
         box: this.box,
@@ -95,17 +100,17 @@ class SquirrelEntry {
     }
   }
 
-  @Deprecated("Use squirrel.add()") // since 2022-01
-  Future<String> addEvent(Map<String, dynamic> data) async {
-    return (await add(data)).id!;
-  }
-
-  @Deprecated("Use context = squirrel.add()") // since 2022-01
-  Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
-    return add(data);
-    //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
-    //return SquirrelEntry(storage: this.storage, contextId: subContextId);
-  }
+  // @Deprecated("Use squirrel.add()") // since 2022-01
+  // Future<String> addEvent(Map<String, dynamic> data) async {
+  //   return (await add(data)).id!;
+  // }
+  //
+  // @Deprecated("Use context = squirrel.add()") // since 2022-01
+  // Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
+  //   return add(data);
+  //   //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
+  //   //return SquirrelEntry(storage: this.storage, contextId: subContextId);
+  // }
 }
 
 class SquirrelStorage extends SquirrelEntry {
@@ -128,7 +133,7 @@ class SquirrelStorage extends SquirrelEntry {
 
   Iterable<MapEntry<int, dynamic>> entries() sync* {
     for (final k in this.box.keys) {
-      yield MapEntry<int, dynamic>(k, this.box.get(k));
+      yield MapEntry<int, dynamic>(k as int, this.box.get(k));
     }
   }
 
@@ -178,7 +183,7 @@ class SquirrelStorage extends SquirrelEntry {
       }
       yield chunk;
       itemsTaken += chunk.length;
-      this.removeChunk(chunk);
+      await this.removeChunk(chunk);
     }
   }
 
