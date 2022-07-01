@@ -126,3 +126,8 @@ void main()
    // use Squirrel as usual
 }
 ```
+
+## License
+
+Copyright © 2022 [Artёm IG](https://github.com/rtmigo).
+Released under the [MIT License](LICENSE).
