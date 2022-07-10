@@ -19,17 +19,15 @@ void main() {
     Hive.init(Directory.systemTemp.createTempSync().path);
   });
 
-  tearDown(() {
-    Hive.close();
-  });
+  tearDown(Hive.close);
 
   test("first", () async {
-    SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test1');
+    final SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test1');
     expect(sq.length, 0);
 
     await sq.add({'event': 'a'.jsonNode}.jsonNode);
     await sq.add({'event': 'b'.jsonNode}.jsonNode);
-    var entries = sq.entries().toList();
+    final entries = sq.entries().toList();
     expect(entries.length, 2);
 
     for (final e in entries) {
@@ -51,7 +49,7 @@ void main() {
   });
 
   test("events are incrementing", () async {
-    SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
+    final SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
     for (int i = 0; i < 5; ++i) {
       await database.add({"x": i.jsonNode}.jsonNode);
     }
@@ -60,7 +58,7 @@ void main() {
   });
 
   test("subcontexts", () async {
-    SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2');
+    final SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2');
     expect(sq.length, 0);
 
     final context = await sq.add({'context': 'Ночь. Улица. Фонарь. Аптека.'.jsonNode}.jsonNode);
@@ -86,7 +84,7 @@ void main() {
 
     expect(sending, isNot(equals((modified))));
 
-    SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2', onSendingTrigger: sending, onModified: modified);
+    final SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2', onSendingTrigger: sending, onModified: modified);
 
     // checking that method `create` and the constructor correctly assigned the handlers
     // to fields
@@ -101,7 +99,7 @@ void main() {
   });
 
   test("adding json-incompatible data throws error", () async {
-    Squirrel squirrel = await Squirrel.create(boxName: 'test3');
+    final Squirrel squirrel = await Squirrel.create(boxName: 'test3');
     await squirrel.add(1.jsonNode);
     await squirrel.add(1.5.jsonNode);
     await squirrel.add('string'.jsonNode);
@@ -112,7 +110,7 @@ void main() {
   });
 
   test("chunk get remove", () async {
-    Squirrel sq = await Squirrel.create(boxName: 'test3');
+    final Squirrel sq = await Squirrel.create(boxName: 'test3');
     expect(sq.length, 0);
 
     for (int i = 0; i < 17; ++i) {
@@ -140,7 +138,7 @@ void main() {
 
   test("onModified", () async {
     int calls = 0;
-    Squirrel db = await Squirrel.create(boxName: 'test3', onModified: () => ++calls);
+    final Squirrel db = await Squirrel.create(boxName: 'test3', onModified: () => ++calls);
 
     //db.onModified.(() { ++calls; });
     await db.add({'a': 1.jsonNode}.jsonNode);
@@ -153,7 +151,7 @@ void main() {
   });
 
   test("takeChunks list", () async {
-    Squirrel database = await Squirrel.create(boxName: 'test');
+    final Squirrel database = await Squirrel.create(boxName: 'test');
     expect(database.length, 0);
 
     for (int i = 0; i < 17; ++i) {
@@ -173,7 +171,7 @@ void main() {
   });
 
   test("takeChunks maxTotal", () async {
-    SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
+    final SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
     expect(database.length, 0);
 
     for (int i = 0; i < 50; ++i) {
@@ -200,7 +198,7 @@ void main() {
   });
 
   test("takeChunks removes only after next chunk is requested", () async {
-    SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
+    final SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
     expect(database.length, 0);
 
     for (int i = 0; i < 27; ++i) {

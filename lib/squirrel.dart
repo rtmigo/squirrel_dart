@@ -16,11 +16,12 @@ const _defaultBoxName = 'squirrel';
 
 class _MonotonicNow {
   final DateTime _startTime = DateTime.now().toUtc();
-  final Stopwatch _stopwatch = Stopwatch()..start();
+  final Stopwatch _stopwatch = Stopwatch()
+    ..start();
 
-  /// Возвращает время, которым должно быть датировано событие, если оно произошло "прямо сейчас".
-  /// В отличие от `DateTime.now()`, тут мы полагаемся на [Stopwatch] и поэтому надеемся
-  /// на монотонное возрастание.
+  /// Возвращает время, которым должно быть датировано событие, если оно
+  /// произошло "прямо сейчас". В отличие от `DateTime.now()`, тут мы полагаемся
+  /// на [Stopwatch] и поэтому надеемся на монотонное возрастание.
   DateTime now() {
     return this._startTime.add(this._stopwatch.elapsed);
   }
@@ -39,18 +40,20 @@ class SquirrelEntry {
   @protected
   final VoidCallback? onSendingTrigger;
 
-  SquirrelEntry(
-      {required this.box,
-      required this.id,
-      required this.onModified,
-      required this.onSendingTrigger});
+  SquirrelEntry({required this.box,
+    required this.id,
+    required this.onModified,
+    required this.onSendingTrigger});
 
   Future<String> _putRecordToDb(String? parentId, JsonNode data) async {
     jsonEncode(data); // just checking the data can be encoded
     final String id = Slugid.v4().toString();
     final rec = {
       'I': id.jsonNode,
-      'T': _monoTime.now().microsecondsSinceEpoch.jsonNode,
+      'T': _monoTime
+          .now()
+          .microsecondsSinceEpoch
+          .jsonNode,
       'P': parentId == null ? JsonNull() : parentId.jsonNode,
       'D': data}.jsonNode;
     //jsonEncode(object)
@@ -100,28 +103,33 @@ class SquirrelEntry {
     }
   }
 
-  // @Deprecated("Use squirrel.add()") // since 2022-01
-  // Future<String> addEvent(Map<String, dynamic> data) async {
-  //   return (await add(data)).id!;
-  // }
-  //
-  // @Deprecated("Use context = squirrel.add()") // since 2022-01
-  // Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
-  //   return add(data);
-  //   //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
-  //   //return SquirrelEntry(storage: this.storage, contextId: subContextId);
-  // }
+// @Deprecated("Use squirrel.add()") // since 2022-01
+// Future<String> addEvent(Map<String, dynamic> data) async {
+//   return (await add(data)).id!;
+// }
+//
+// @Deprecated("Use context = squirrel.add()") // since 2022-01
+// Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
+//   return add(data);
+//   //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
+//   //return SquirrelEntry(storage: this.storage, contextId: subContextId);
+// }
 }
 
 class SquirrelStorage extends SquirrelEntry {
-  SquirrelStorage._(Box<Map<String, dynamic>> box, {VoidCallback? onModified, VoidCallback? onSendingTrigger})
-      : super(box: box, id: null, onModified: onModified, onSendingTrigger: onSendingTrigger);
+  SquirrelStorage._(Box<Map<String, dynamic>> box,
+      {VoidCallback? onModified, VoidCallback? onSendingTrigger})
+      : super(box: box,
+      id: null,
+      onModified: onModified,
+      onSendingTrigger: onSendingTrigger);
 
-  /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await Hive.initFlutter`.
+  /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await
+  /// Hive.initFlutter`.
   ///
-  /// Здесь это не делается автоматически, поскольку база Hive едина для всего приложения
-  /// (и в этом плане у меня выбора нет). Ее стоит инициализировать отдельно и осознанно:
-  /// передавая ей путь, например.
+  /// Здесь это не делается автоматически, поскольку база Hive едина для всего
+  /// приложения (и в этом плане у меня выбора нет). Ее стоит инициализировать
+  /// отдельно и осознанно: передавая ей путь, например.
   static Future<SquirrelStorage> create({
     String boxName = _defaultBoxName,
     VoidCallback? onModified,
@@ -133,7 +141,8 @@ class SquirrelStorage extends SquirrelEntry {
 
   Iterable<MapEntry<int, dynamic>> entries() sync* {
     for (final k in this.box.keys) {
-      yield MapEntry<int, dynamic>(k as int, this.box.get(k));
+      final dynamic entry = this.box.get(k);
+      yield MapEntry<int, dynamic>(k as int, entry);
     }
   }
 
@@ -153,23 +162,25 @@ class SquirrelStorage extends SquirrelEntry {
     return this.box.deleteAll(chunk.keys);
   }
 
-  /// Возвращает данные порциями. Каждый раз, когда мы запрашиваем новый элемент, все данные
-  /// предыдущего элемента удаляются из базы.
+  /// Возвращает данные порциями. Каждый раз, когда мы запрашиваем новый
+  /// элемент, все данные предыдущего элемента удаляются из базы.
   ///
-  /// Перебрав все доступные элементы мы обычно запрашиваем "следующий" элемент, но получаем сигнал
-  /// окончания итерации - прямо или косвенно. То есть, запрос происходит и после последнего
-  /// элемента. А значит, если прокрутить полный цикл, вроде `takeChunks().toList()`, то в базе
-  /// не останется буквально ни одного элемента.
+  /// Перебрав все доступные элементы мы обычно запрашиваем "следующий" элемент,
+  /// но получаем сигнал окончания итерации - прямо или косвенно. То есть,
+  /// запрос происходит и после последнего элемента. А значит, если прокрутить
+  /// полный цикл, вроде `takeChunks().toList()`, то в базе не останется
+  /// буквально ни одного элемента.
   ///
-  /// Метод может использоваться, чтобы выгрузить все данные из локальной базы в какое-то другое
-  /// место, например, сервер.
+  /// Метод может использоваться, чтобы выгрузить все данные из локальной базы в
+  /// какое-то другое место, например, сервер.
   ///
   /// ```dart
   /// await for (var chunk in db.takeChunks()) {
   ///   await sendToServer(chunk);
   /// }
   /// ```
-  Stream<SquirrelChunk> takeChunks({int itemsPerChunk = 100, int? maxItemsTotal}) async* {
+  Stream<SquirrelChunk> takeChunks(
+      {int itemsPerChunk = 100, int? maxItemsTotal}) async* {
     int itemsTaken = 0;
     for (;;) {
       int maxPerNextChunk = itemsPerChunk;
@@ -187,7 +198,8 @@ class SquirrelStorage extends SquirrelEntry {
     }
   }
 
-  @Deprecated("Use object methods directly (squirrel.add instead squirrel.root.add)") // 2022-01
+  @Deprecated(
+      "Use object methods directly (squirrel.add instead squirrel.root.add)") // 2022-01
   SquirrelEntry get root => this;
 }
 
@@ -232,14 +244,16 @@ class SquirrelSender {
       int gotItemsSum = 0;
 
       await for (final chunk
-          in storage.takeChunks(itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
+      in storage.takeChunks(
+          itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
         assert((gotItemsSum += chunk.length) <= maxItemsTotal);
         await this.send(chunk.values.toList(growable: false));
       }
     });
   }
 
-  Future<void> handleSendingTrigger(SquirrelStorage storage) => _synchronizedSendAll(storage);
+  Future<void> handleSendingTrigger(SquirrelStorage storage) =>
+      _synchronizedSendAll(storage);
 
   void handleModified(SquirrelStorage storage) async {
     // работа этого метода может быть долгой и асинхронной. Предотвращаю параллельные запуски
@@ -265,9 +279,9 @@ class SquirrelSender {
     final sender = SquirrelSender(send: sendToServer);
     late Squirrel squirrel;
     squirrel = await Squirrel.create(
-      onModified: () => sender.handleModified(squirrel),
-      onSendingTrigger: () => sender.handleSendingTrigger(squirrel),
-      boxName: boxName  // todo test this param
+        onModified: () => sender.handleModified(squirrel),
+        onSendingTrigger: () => sender.handleSendingTrigger(squirrel),
+        boxName: boxName // todo test this param
     );
     return squirrel;
   }
