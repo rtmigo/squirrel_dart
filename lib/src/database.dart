@@ -36,14 +36,11 @@ class SquirrelDb {
     await _records.records(keys).delete(database);
   }
 
-  Future<List<int>> readKeys([Transaction? txn]) async =>
-      (await _records.findKeys(txn ?? database)).map((e) => e as int).toList();
-
   /// Возвращает записи в порядке их добавления в базу.
-  /// 
-  /// [MapEntry.key] это назначенные базой auto-incrementing ключи. Используя 
+  ///
+  /// [MapEntry.key] это назначенные базой auto-incrementing ключи. Используя
   /// их, мы сможем, например, вызвать [deleteByKeys].
-  /// 
+  ///
   /// Значениями [MapEntry.value] являются JSON-совместимые данные, ранее
   /// переданные методу [writeRecord].
   Future<List<MapEntry<int, dynamic>>> readRecordsAsc({int? limit}) async =>
@@ -55,8 +52,6 @@ class SquirrelDb {
           .map((RecordSnapshot<dynamic, dynamic> rec) =>
               MapEntry(rec.key as int, rec.value))
           .toList(growable: false);
-
-  Future<dynamic> read(int key) => _records.record(key).get(this.database);
 
   Future<void> deleteAll() => _records.delete(database);
 }
