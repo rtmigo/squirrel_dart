@@ -48,8 +48,6 @@ void main() {
       expect(e.value['P'], isNull);
     }
 
-    //entries.sort((a,b) => a.value["T"].compareTo(b.value['T']));
-
     // данные конкретно такие
     expect(entries[0].value['D'], {'event': 'a'});
     expect(entries[1].value['D'], {'event': 'b'});
