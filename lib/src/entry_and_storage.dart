@@ -43,7 +43,6 @@ class SquirrelEntry {
       'P': parentId == null ? JsonNull() : parentId.jsonNode,
       'D': data
     }.jsonNode;
-    //jsonEncode(object)
     await this._db.writeRecord(rec);
     this.onModified?.call();
 
@@ -115,7 +114,7 @@ class SquirrelStorage extends SquirrelEntry {
   }
 
   Future<List<MapEntry<int, dynamic>>> readEntries() async {
-    return await this._db.readOldestRecords();
+    return await this._db.readRecordsAsc();
     // for (final k in (await this._db.readKeys())..sort()) {
     //   yield MapEntry<int, dynamic>(k, await this._db.read(k));
     // }
@@ -132,7 +131,7 @@ class SquirrelStorage extends SquirrelEntry {
   Future<SquirrelChunk> readChunk([int n = 100]) async {
     //  .readEntries().take(n).readToList()
     return UnmodifiableMapView(
-        Map.fromEntries(await this._db.readOldestRecords(limit: n)));
+        Map.fromEntries(await this._db.readRecordsAsc(limit: n)));
   }
 
   Future<void> deleteChunk(SquirrelChunk chunk) async {
@@ -156,7 +155,7 @@ class SquirrelStorage extends SquirrelEntry {
   ///   await sendToServer(chunk);
   /// }
   /// ```
-  Stream<SquirrelChunk> readChunks(
+  Stream<SquirrelChunk> popChunks(
       {int itemsPerChunk = 100, int? maxItemsTotal}) async* {
     int itemsTaken = 0;
     for (;;) {
@@ -165,6 +164,8 @@ class SquirrelStorage extends SquirrelEntry {
         maxPerNextChunk = min(maxPerNextChunk, maxItemsTotal - itemsTaken);
       }
 
+      // на каждой итерации берем самые первые элементы из БД,
+      // а затем удаляем их
       final chunk = await this.readChunk(maxPerNextChunk);
       if (chunk.isEmpty) {
         break;
