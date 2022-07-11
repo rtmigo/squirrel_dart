@@ -52,7 +52,7 @@ class SquirrelDb {
     await _special.record(_growingIdKey).put(txn, id);
   }
 
-  Future<int> add(JsonNode data) async {
+  Future<int> writeRecord(JsonNode data) async {
     late int id;
     await database.transaction((txn) async {
       id = await _readGrowingId(txn);
@@ -66,18 +66,18 @@ class SquirrelDb {
     return id;
   }
 
-  Future<int> length() async {
+  Future<int> readRecordsCount() async {
     return _records.count(this.database);
   }
 
-  Future<void> deleteAll(Iterable<int> keys) async {
+  Future<void> deleteByKeys(Iterable<int> keys) async {
     await _records.records(keys).delete(database);
   }
 
-  Future<List<int>> keys() async =>
+  Future<List<int>> readKeys() async =>
       (await _records.findKeys(database)).map((e) => e as int).toList();
 
-  Future<dynamic> get(int key) => _records.record(key).get(this.database);
+  Future<dynamic> read(int key) => _records.record(key).get(this.database);
 
-  Future<void> clear() => _records.delete(database);
+  Future<void> deleteAll() => _records.delete(database);
 }

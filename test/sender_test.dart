@@ -1,9 +1,7 @@
 // SPDX-FileCopyrightText: (c) 2022 Artёm IG <github.com/rtmigo>
 // SPDX-License-Identifier: MIT
 
-import 'dart:convert';
 import 'dart:io';
-
 
 import 'package:jsontree/jsontree.dart';
 import 'package:squirrel/squirrel.dart';
@@ -28,7 +26,8 @@ void main() {
   File? tempFile;
   late SquirrelStorage tempStorage;
   setUp(() {
-    tempFile = File("temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
+    tempFile =
+        File("temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
   });
 
   tearDown(() async {
@@ -43,8 +42,7 @@ void main() {
 
   test("handleOnModified", () async {
     final cc = CallsCounting();
-    tempStorage = await SquirrelStorage.create(
-        tempFile!,
+    tempStorage = await SquirrelStorage.create(tempFile!,
         onModified: () => cc.sender.handleModified(tempStorage));
 
     for (int i = 0; i < 55; ++i) {
@@ -58,8 +56,7 @@ void main() {
   test("handleTrigger", () async {
     final cc = CallsCounting();
 
-    tempStorage = await SquirrelStorage.create(
-        tempFile!,
+    tempStorage = await SquirrelStorage.create(tempFile!,
         onSendingTrigger: () => cc.sender.handleSendingTrigger(tempStorage));
 
     for (int i = 0; i < 55; ++i) {
@@ -78,9 +75,7 @@ void main() {
   test("handleTrigger and onModified", () async {
     final cc = CallsCounting();
 
-
-    tempStorage = await SquirrelStorage.create(
-        tempFile!,
+    tempStorage = await SquirrelStorage.create(tempFile!,
         onModified: () => cc.sender.handleModified(tempStorage),
         onSendingTrigger: () => cc.sender.handleSendingTrigger(tempStorage));
 

@@ -31,9 +31,9 @@ void main() {
     tempStorage = await SquirrelStorage.create(tempFile!);
     expect(await tempStorage!.length(), 0);
 
-    await tempStorage!.add({'event': 'a'.jsonNode}.jsonNode);
-    await tempStorage!.add({'event': 'b'.jsonNode}.jsonNode);
-    final entries = await tempStorage!.entries().readToList();
+    await tempStorage.add({'event': 'a'.jsonNode}.jsonNode);
+    await tempStorage.add({'event': 'b'.jsonNode}.jsonNode);
+    final entries = await tempStorage.readEntries().readToList();
     expect(entries.length, 2);
 
 
@@ -63,24 +63,24 @@ void main() {
     tempStorage =
         await SquirrelStorage.create(tempFile!);
     for (int i = 0; i < 5; ++i) {
-      await tempStorage!.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage.add({"x": i.jsonNode}.jsonNode);
     }
 
-    expect((await tempStorage!.entries().readToList()).map((e) => e.value['D']['x']).toList(),
+    expect((await tempStorage.readEntries().readToList()).map((e) => e.value['D']['x']).toList(),
         [0, 1, 2, 3, 4]);
   });
 
   test("subcontexts", () async {
     tempStorage =
         await SquirrelStorage.create(tempFile!);
-    expect(await tempStorage!.length(), 0);
+    expect(await tempStorage.length(), 0);
 
-    final context = await tempStorage!
+    final context = await tempStorage
         .add({'context': 'Ночь. Улица. Фонарь. Аптека.'.jsonNode}.jsonNode);
 
     await context.add({'event': 'a'.jsonNode}.jsonNode);
     await context.add({'event': 'b'.jsonNode}.jsonNode);
-    final entries = await tempStorage!.entries().toList();
+    final entries = await tempStorage.readEntries().toList();
     expect(entries.length, 3);
 
     // контекст содержит данные
@@ -105,10 +105,10 @@ void main() {
 
     // checking that method `create` and the constructor correctly assigned the handlers
     // to fields
-    expect(tempStorage!.onSendingTrigger, equals(sending));
-    expect(tempStorage!.onModified, equals(modified));
+    expect(tempStorage.onSendingTrigger, equals(sending));
+    expect(tempStorage.onModified, equals(modified));
 
-    final e = await (await tempStorage!.add('sub'.jsonNode)).add('subsub'.jsonNode);
+    final e = await (await tempStorage.add('sub'.jsonNode)).add('subsub'.jsonNode);
 
     // checking that child objects also received the correct handlers
     expect(e.onSendingTrigger, equals(sending));
@@ -118,11 +118,11 @@ void main() {
   test("adding json-incompatible data throws error", () async {
     tempStorage =
         await Squirrel.create(tempFile!);
-    await tempStorage!.add(1.jsonNode);
-    await tempStorage!.add(1.5.jsonNode);
-    await tempStorage!.add('string'.jsonNode);
-    await tempStorage!.add({'key': 123.jsonNode}.jsonNode);
-    await tempStorage!.add([1.jsonNode, 2.jsonNode, 3.jsonNode].jsonNode);
+    await tempStorage.add(1.jsonNode);
+    await tempStorage.add(1.5.jsonNode);
+    await tempStorage.add('string'.jsonNode);
+    await tempStorage.add({'key': 123.jsonNode}.jsonNode);
+    await tempStorage.add([1.jsonNode, 2.jsonNode, 3.jsonNode].jsonNode);
 
     //expect(()=>squirrel.add(NonJsonSerializable()), throwsA(isA<JsonUnsupportedObjectError>()));
   });
@@ -137,21 +137,21 @@ void main() {
 
     // убедимся, что данные не удаляются, когда мы просто get
     for (int i = 0; i < 3; ++i) {
-      final stub = await tempStorage.getChunk(10);
+      final stub = await tempStorage.readChunk(10);
       expect(stub.length, 10);
     }
 
-    final chunk1 = await tempStorage.getChunk(10);
+    final chunk1 = await tempStorage.readChunk(10);
     expect(chunk1.length, 10);
-    await tempStorage.removeChunk(chunk1);
+    await tempStorage.deleteChunk(chunk1);
 
-    final chunk2 = await tempStorage.getChunk(10);
+    final chunk2 = await tempStorage.readChunk(10);
     expect(chunk2.length, 7);
-    await tempStorage.removeChunk(chunk2);
+    await tempStorage.deleteChunk(chunk2);
 
-    final chunk3 = await tempStorage.getChunk(10);
+    final chunk3 = await tempStorage.readChunk(10);
     expect(chunk3.length, 0);
-    await tempStorage.removeChunk(chunk3);
+    await tempStorage.deleteChunk(chunk3);
   });
 
   test("onModified", () async {
@@ -181,7 +181,7 @@ void main() {
 
     expect(await tempStorage.length(), 17);
 
-    final chunks = await tempStorage.takeChunks(itemsPerChunk: 10).toList();
+    final chunks = await tempStorage.readChunks(itemsPerChunk: 10).toList();
     expect(chunks.length, 2);
     expect(chunks[0].length, 10);
     expect(chunks[1].length, 7);
@@ -190,8 +190,7 @@ void main() {
   });
 
   test("takeChunks maxTotal", () async {
-    tempStorage =
-        await SquirrelStorage.create(tempFile!);
+    tempStorage = await SquirrelStorage.create(tempFile!);
     expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 50; ++i) {
@@ -201,7 +200,7 @@ void main() {
     expect(await tempStorage.length(), 50);
 
     final chunks = await tempStorage
-        .takeChunks(itemsPerChunk: 10, maxItemsTotal: 42)
+        .readChunks(itemsPerChunk: 10, maxItemsTotal: 42)
         .toList();
     expect(chunks.length, 5);
     int sum = 0;
@@ -222,25 +221,25 @@ void main() {
   test("takeChunks removes only after next chunk is requested", () async {
     tempStorage =
         await SquirrelStorage.create(tempFile!);
-    expect(await tempStorage!.length(), 0);
+    expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 27; ++i) {
-      await tempStorage!.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage.add({"x": i.jsonNode}.jsonNode);
     }
 
     int i = 0;
-    await for (final chunk in tempStorage!.takeChunks(itemsPerChunk: 10)) {
+    await for (final chunk in tempStorage.readChunks(itemsPerChunk: 10)) {
       switch (i) {
         case 0:
-          expect(await tempStorage!.length(), 27);
+          expect(await tempStorage.length(), 27);
           expect(chunk.length, 10);
           break;
         case 1:
-          expect(await tempStorage!.length(), 17);
+          expect(await tempStorage.length(), 17);
           expect(chunk.length, 10);
           break;
         case 2:
-          expect(await tempStorage!.length(), 7);
+          expect(await tempStorage.length(), 7);
           expect(chunk.length, 7);
           break;
         default:

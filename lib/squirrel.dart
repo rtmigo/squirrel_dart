@@ -13,8 +13,6 @@ import 'package:slugid/slugid.dart';
 import 'package:squirrel/src/database.dart';
 import 'package:synchronized/synchronized.dart';
 
-const _defaultBoxName = 'squirrel';
-
 class _MonotonicNow {
   final DateTime _startTime = DateTime.now().toUtc();
   final Stopwatch _stopwatch = Stopwatch()..start();
@@ -31,7 +29,7 @@ typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = FutureOr<void> Function();
 
 class SquirrelEntry {
-  final SquirrelDb box;
+  final SquirrelDb _db;
 
   final String? id;
 
@@ -42,10 +40,10 @@ class SquirrelEntry {
   final VoidCallback? onSendingTrigger;
 
   SquirrelEntry(
-      {required this.box,
+      {required SquirrelDb db,
       required this.id,
       required this.onModified,
-      required this.onSendingTrigger});
+      required this.onSendingTrigger}): _db = db;
 
   Future<String> _putRecordToDb(String? parentId, JsonNode data) async {
     jsonEncode(data); // just checking the data can be encoded
@@ -57,7 +55,7 @@ class SquirrelEntry {
       'D': data
     }.jsonNode;
     //jsonEncode(object)
-    await this.box.add(rec);
+    await this._db.writeRecord(rec);
     this.onModified?.call();
 
     return id;
@@ -90,7 +88,7 @@ class SquirrelEntry {
   Future<SquirrelEntry> add(JsonNode data) async {
     final String id = await this._putRecordToDb(this.id, data);
     return SquirrelEntry(
-        box: this.box,
+        db: this._db,
         id: id,
         onModified: this.onModified,
         onSendingTrigger: this.onSendingTrigger);
@@ -130,7 +128,7 @@ class SquirrelStorage extends SquirrelEntry {
   SquirrelStorage._(SquirrelDb box,
       {VoidCallback? onModified, VoidCallback? onSendingTrigger})
       : super(
-            box: box,
+            db: box,
             id: null,
             onModified: onModified,
             onSendingTrigger: onSendingTrigger);
@@ -153,32 +151,28 @@ class SquirrelStorage extends SquirrelEntry {
         onSendingTrigger: onSendingTrigger);
   }
 
-  Stream<MapEntry<int, dynamic>> entries() async* {
-    for (final k in await this.box.keys()) {
-      final dynamic entry = await this.box.get(k);
+  Stream<MapEntry<int, dynamic>> readEntries() async* {
+    for (final k in (await this._db.readKeys())..sort()) {
+      final dynamic entry = await this._db.read(k);
       yield MapEntry<int, dynamic>(k, entry);
     }
   }
 
   Future<void> clear() async {
-    await this.box.clear();
+    await this._db.deleteAll();
   }
 
-  Future<void> close() => this.box.database.close();
+  Future<void> close() => this._db.database.close();
 
-  Future<int> length() => this.box.length();
+  Future<int> length() => this._db.readRecordsCount();
 
-  Future<SquirrelChunk> getChunk([int n = 100]) async {
-    // final lst = <MapEntry<String, dynamic>>[];
-    // await for (final x in this.entries().take(n)) {
-    //   lst.add(x);
-    // }
+  Future<SquirrelChunk> readChunk([int n = 100]) async {
     return UnmodifiableMapView(
-        Map.fromEntries(await this.entries().take(n).readToList()));
+        Map.fromEntries(await this.readEntries().take(n).readToList()));
   }
 
-  Future<void> removeChunk(SquirrelChunk chunk) async {
-    return this.box.deleteAll(chunk.keys);
+  Future<void> deleteChunk(SquirrelChunk chunk) async {
+    return this._db.deleteByKeys(chunk.keys);
   }
 
   /// Возвращает данные порциями. Каждый раз, когда мы запрашиваем новый
@@ -198,7 +192,7 @@ class SquirrelStorage extends SquirrelEntry {
   ///   await sendToServer(chunk);
   /// }
   /// ```
-  Stream<SquirrelChunk> takeChunks(
+  Stream<SquirrelChunk> readChunks(
       {int itemsPerChunk = 100, int? maxItemsTotal}) async* {
     int itemsTaken = 0;
     for (;;) {
@@ -207,13 +201,13 @@ class SquirrelStorage extends SquirrelEntry {
         maxPerNextChunk = min(maxPerNextChunk, maxItemsTotal - itemsTaken);
       }
 
-      final chunk = await this.getChunk(maxPerNextChunk);
+      final chunk = await this.readChunk(maxPerNextChunk);
       if (chunk.isEmpty) {
         break;
       }
       yield chunk;
       itemsTaken += chunk.length;
-      await this.removeChunk(chunk);
+      await this.deleteChunk(chunk);
     }
   }
 
@@ -262,7 +256,7 @@ class SquirrelSender {
       final int maxItemsTotal = await storage.length();
       int gotItemsSum = 0;
 
-      await for (final chunk in storage.takeChunks(
+      await for (final chunk in storage.readChunks(
           itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
         assert((gotItemsSum += chunk.length) <= maxItemsTotal);
         await this.send(chunk.values.toList(growable: false));
