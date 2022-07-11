@@ -105,31 +105,21 @@ class SquirrelStorage extends SquirrelEntry {
     File file, {
     VoidCallback? onModified,
     VoidCallback? onSendingTrigger,
-    //bool temp = false
   }) async {
     return SquirrelStorage._(await SquirrelDb.open(file),
-        // Hive.openBox(boxName),
-        onModified: onModified,
-        onSendingTrigger: onSendingTrigger);
+        onModified: onModified, onSendingTrigger: onSendingTrigger);
   }
 
-  Future<List<MapEntry<int, dynamic>>> readEntries() async {
-    return await this._db.readRecordsAsc();
-    // for (final k in (await this._db.readKeys())..sort()) {
-    //   yield MapEntry<int, dynamic>(k, await this._db.read(k));
-    // }
-  }
+  Future<List<MapEntry<int, dynamic>>> readEntries() =>
+      this._db.readRecordsAsc();
 
-  Future<void> clear() async {
-    await this._db.deleteAll();
-  }
+  Future<void> clear() => this._db.deleteAll();
 
   Future<void> close() => this._db.database.close();
 
   Future<int> length() => this._db.readRecordsCount();
 
   Future<SquirrelChunk> readChunk([int n = 100]) async {
-    //  .readEntries().take(n).readToList()
     return UnmodifiableMapView(
         Map.fromEntries(await this._db.readRecordsAsc(limit: n)));
   }
