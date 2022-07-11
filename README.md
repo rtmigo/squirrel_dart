@@ -1,4 +1,4 @@
-[![stability-wip](https://img.shields.io/badge/stability-wip-yellow.svg)](https://github.com/mkenney/software-guides/blob/master/STABILITY-BADGES.md#work-in-progress)
+[![stability-experimental](https://img.shields.io/badge/stability-experimental-orange.svg)](https://github.com/mkenney/software-guides/blob/master/STABILITY-BADGES.md#experimental)
 
 # [squirrel](https://github.com/rtmigo/squirrel_dart)
 
