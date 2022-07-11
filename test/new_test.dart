@@ -175,7 +175,7 @@ void main() {
 
     expect(await tempStorage.length(), 17);
 
-    final chunks = await tempStorage.readChunks(itemsPerChunk: 10).toList();
+    final chunks = await tempStorage.popChunks(itemsPerChunk: 10).toList();
     expect(chunks.length, 2);
     expect(chunks[0].length, 10);
     expect(chunks[1].length, 7);
@@ -194,7 +194,7 @@ void main() {
     expect(await tempStorage.length(), 50);
 
     final chunks = await tempStorage
-        .readChunks(itemsPerChunk: 10, maxItemsTotal: 42)
+        .popChunks(itemsPerChunk: 10, maxItemsTotal: 42)
         .toList();
     expect(chunks.length, 5);
     int sum = 0;
@@ -221,7 +221,7 @@ void main() {
     }
 
     int i = 0;
-    await for (final chunk in tempStorage.readChunks(itemsPerChunk: 10)) {
+    await for (final chunk in tempStorage.popChunks(itemsPerChunk: 10)) {
       switch (i) {
         case 0:
           expect(await tempStorage.length(), 27);

@@ -45,7 +45,7 @@ class SquirrelSender {
       final int maxItemsTotal = await storage.length();
       int gotItemsSum = 0;
 
-      await for (final chunk in storage.readChunks(
+      await for (final chunk in storage.popChunks(
           itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
         assert((gotItemsSum += chunk.length) <= maxItemsTotal);
         await this.send(chunk.values.toList(growable: false));
@@ -87,7 +87,6 @@ class SquirrelSender {
       file,
       onModified: () => sender.handleModified(squirrel),
       onSendingTrigger: () => sender.handleSendingTrigger(squirrel),
-      //boxName: boxName // todo test this param
     );
     return squirrel;
   }
