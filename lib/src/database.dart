@@ -74,8 +74,25 @@ class SquirrelDb {
     await _records.records(keys).delete(database);
   }
 
-  Future<List<int>> readKeys() async =>
-      (await _records.findKeys(database)).map((e) => e as int).toList();
+  Future<List<int>> readKeys([Transaction? txn]) async =>
+      (await _records.findKeys(txn ?? database)).map((e) => e as int).toList();
+
+  Future<List<MapEntry<int, dynamic>>> readFirstRecords(int n) async {
+    late List<int> keys;
+    late List<dynamic> records;
+    await this.database.transaction((transaction) async {
+      keys = ((await readKeys(transaction))..sort()).take(n).toList(growable: false);
+      records = await _records.records(keys).get(this.database);
+    });
+
+    assert (keys.length==records.length);
+    final result = <MapEntry<int, dynamic>>[];
+    for (int i=0; i<keys.length; ++i) {
+      result.add(MapEntry(keys[i], records[i]));
+    }
+    return result;
+  }
+
 
   Future<dynamic> read(int key) => _records.record(key).get(this.database);
 

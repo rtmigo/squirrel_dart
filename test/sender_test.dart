@@ -27,7 +27,7 @@ void main() {
   late SquirrelStorage tempStorage;
   setUp(() {
     tempFile =
-        File("temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
+        File("test/temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
   });
 
   tearDown(() async {
