@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: (c) 2021 Artёm IG <github.com/rtmigo>
 // SPDX-License-Identifier: MIT
 
-
 import 'dart:io';
 
 import 'package:jsontree/jsontree.dart';
 import 'package:squirrel/squirrel.dart';
+import 'package:squirrel/src/common.dart';
 import 'package:test/test.dart';
 
 class NonJsonSerializable {}
@@ -14,7 +14,8 @@ void main() {
   File? tempFile;
   late SquirrelStorage tempStorage;
   setUp(() {
-    tempFile = File("temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
+    tempFile = File(
+        "test/temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
   });
 
   tearDown(() async {
@@ -36,8 +37,6 @@ void main() {
     final entries = await tempStorage.readEntries().readToList();
     expect(entries.length, 2);
 
-
-
     for (final e in entries) {
       print(e);
       print(e.value);
@@ -47,7 +46,6 @@ void main() {
       expect(e.value['T'], isA<int>());
       expect(e.value['P'], isNull);
     }
-
 
     // данные конкретно такие
     expect(entries[0].value['D'], {'event': 'a'});
@@ -59,19 +57,20 @@ void main() {
   });
 
   test("events are incrementing", () async {
-    tempStorage =
-        await SquirrelStorage.create(tempFile!);
+    tempStorage = await SquirrelStorage.create(tempFile!);
     for (int i = 0; i < 5; ++i) {
       await tempStorage.add({"x": i.jsonNode}.jsonNode);
     }
 
-    expect((await tempStorage.readEntries().readToList()).map((e) => e.value['D']['x']).toList(),
+    expect(
+        (await tempStorage.readEntries().readToList())
+            .map((e) => e.value['D']['x'])
+            .toList(),
         [0, 1, 2, 3, 4]);
   });
 
   test("subcontexts", () async {
-    tempStorage =
-        await SquirrelStorage.create(tempFile!);
+    tempStorage = await SquirrelStorage.create(tempFile!);
     expect(await tempStorage.length(), 0);
 
     final context = await tempStorage
@@ -99,15 +98,15 @@ void main() {
     expect(sending, isNot(equals((modified))));
 
     tempStorage = await SquirrelStorage.create(tempFile!,
-        onSendingTrigger: sending,
-        onModified: modified);
+        onSendingTrigger: sending, onModified: modified);
 
     // checking that method `create` and the constructor correctly assigned the handlers
     // to fields
     expect(tempStorage.onSendingTrigger, equals(sending));
     expect(tempStorage.onModified, equals(modified));
 
-    final e = await (await tempStorage.add('sub'.jsonNode)).add('subsub'.jsonNode);
+    final e =
+        await (await tempStorage.add('sub'.jsonNode)).add('subsub'.jsonNode);
 
     // checking that child objects also received the correct handlers
     expect(e.onSendingTrigger, equals(sending));
@@ -115,15 +114,12 @@ void main() {
   });
 
   test("adding json-incompatible data throws error", () async {
-    tempStorage =
-        await Squirrel.create(tempFile!);
+    tempStorage = await Squirrel.create(tempFile!);
     await tempStorage.add(1.jsonNode);
     await tempStorage.add(1.5.jsonNode);
     await tempStorage.add('string'.jsonNode);
     await tempStorage.add({'key': 123.jsonNode}.jsonNode);
     await tempStorage.add([1.jsonNode, 2.jsonNode, 3.jsonNode].jsonNode);
-
-    //expect(()=>squirrel.add(NonJsonSerializable()), throwsA(isA<JsonUnsupportedObjectError>()));
   });
 
   test("chunk get remove", () async {
@@ -168,8 +164,7 @@ void main() {
   });
 
   test("takeChunks list", () async {
-    tempStorage =
-        await Squirrel.create(tempFile!);
+    tempStorage = await Squirrel.create(tempFile!);
     expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 17; ++i) {
@@ -218,8 +213,7 @@ void main() {
   });
 
   test("takeChunks removes only after next chunk is requested", () async {
-    tempStorage =
-        await SquirrelStorage.create(tempFile!);
+    tempStorage = await SquirrelStorage.create(tempFile!);
     expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 27; ++i) {
