@@ -114,10 +114,11 @@ class SquirrelStorage extends SquirrelEntry {
         onSendingTrigger: onSendingTrigger);
   }
 
-  Stream<MapEntry<int, dynamic>> readEntries() async* {
-    for (final k in (await this._db.readKeys())..sort()) {
-      yield MapEntry<int, dynamic>(k, await this._db.read(k));
-    }
+  Future<List<MapEntry<int, dynamic>>> readEntries() async {
+    return await this._db.readOldestRecords();
+    // for (final k in (await this._db.readKeys())..sort()) {
+    //   yield MapEntry<int, dynamic>(k, await this._db.read(k));
+    // }
   }
 
   Future<void> clear() async {
@@ -131,7 +132,7 @@ class SquirrelStorage extends SquirrelEntry {
   Future<SquirrelChunk> readChunk([int n = 100]) async {
     //  .readEntries().take(n).readToList()
     return UnmodifiableMapView(
-        Map.fromEntries(await this._db.readOldestRecords(n)));
+        Map.fromEntries(await this._db.readOldestRecords(limit: n)));
   }
 
   Future<void> deleteChunk(SquirrelChunk chunk) async {

@@ -34,7 +34,7 @@ void main() {
 
     await tempStorage.add({'event': 'a'.jsonNode}.jsonNode);
     await tempStorage.add({'event': 'b'.jsonNode}.jsonNode);
-    final entries = await tempStorage.readEntries().readToList();
+    final entries = await tempStorage.readEntries();
     expect(entries.length, 2);
 
     for (final e in entries) {
@@ -63,7 +63,7 @@ void main() {
     }
 
     expect(
-        (await tempStorage.readEntries().readToList())
+        (await tempStorage.readEntries())
             .map((e) => e.value['D']['x'])
             .toList(),
         [0, 1, 2, 3, 4]);
@@ -78,7 +78,7 @@ void main() {
 
     await context.add({'event': 'a'.jsonNode}.jsonNode);
     await context.add({'event': 'b'.jsonNode}.jsonNode);
-    final entries = await tempStorage.readEntries().toList();
+    final entries = await tempStorage.readEntries();
     expect(entries.length, 3);
 
     // контекст содержит данные
