@@ -55,7 +55,6 @@ void main() {
 }
 ```
 
-
 Child nodes can be nested. You can create a tree-like structure of any depth.
 
 ## Data format
