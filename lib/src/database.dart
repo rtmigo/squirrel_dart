@@ -40,13 +40,13 @@ class SquirrelDb {
       (await _records.findKeys(txn ?? database)).map((e) => e as int).toList();
 
   Future<List<MapEntry<int, dynamic>>> readOldestRecords({int? limit}) async =>
-      // сортируем ключи по возрастанию, берем limit первых ключей
+      // сортируем ключи по возрастанию, берем limit первых элементов
       (await this._records.find(database,
               finder: Finder(
                   sortOrders: [SortOrder(Field.key, true)], limit: limit)))
           // мапим найденное в список
-          .map((RecordSnapshot<dynamic, dynamic> e) =>
-              MapEntry(e.key as int, e.value))
+          .map((RecordSnapshot<dynamic, dynamic> snapshot) =>
+              MapEntry(snapshot.key as int, snapshot.value))
           .toList(growable: false);
 
   Future<dynamic> read(int key) => _records.record(key).get(this.database);
