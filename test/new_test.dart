@@ -1,36 +1,46 @@
 // SPDX-FileCopyrightText: (c) 2021 Artёm IG <github.com/rtmigo>
 // SPDX-License-Identifier: MIT
 
-import 'dart:convert';
+
 import 'dart:io';
 
-import 'package:hive/hive.dart';
 import 'package:jsontree/jsontree.dart';
 import 'package:squirrel/squirrel.dart';
 import 'package:test/test.dart';
 
-class NonJsonSerializable {
-
-}
-
+class NonJsonSerializable {}
 
 void main() {
+  File? tempFile;
+  late SquirrelStorage tempStorage;
   setUp(() {
-    Hive.init(Directory.systemTemp.createTempSync().path);
+    tempFile = File("temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
   });
 
-  tearDown(Hive.close);
+  tearDown(() async {
+    await tempStorage.close();
+    try {
+      tempFile!.deleteSync();
+    } on FileSystemException {
+      // pass
+    }
+    tempFile = null;
+  });
 
   test("first", () async {
-    final SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test1');
-    expect(sq.length, 0);
+    tempStorage = await SquirrelStorage.create(tempFile!);
+    expect(await tempStorage!.length(), 0);
 
-    await sq.add({'event': 'a'.jsonNode}.jsonNode);
-    await sq.add({'event': 'b'.jsonNode}.jsonNode);
-    final entries = sq.entries().toList();
+    await tempStorage!.add({'event': 'a'.jsonNode}.jsonNode);
+    await tempStorage!.add({'event': 'b'.jsonNode}.jsonNode);
+    final entries = await tempStorage!.entries().readToList();
     expect(entries.length, 2);
 
+
+
     for (final e in entries) {
+      print(e);
+      print(e.value);
       expect(e.key, isA<int>());
       expect(e.value['I'], isA<String>());
       expect(e.value['I'].length, '3cka5hc3QRCTB61W8dDoag'.length);
@@ -45,27 +55,32 @@ void main() {
     expect(entries[1].value['D'], {'event': 'b'});
 
     // время идет по возрастанию
-    expect(entries[0].value['T'] as int, lessThan(entries[1].value['T'] as int));
+    expect(
+        entries[0].value['T'] as int, lessThan(entries[1].value['T'] as int));
   });
 
   test("events are incrementing", () async {
-    final SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
+    tempStorage =
+        await SquirrelStorage.create(tempFile!);
     for (int i = 0; i < 5; ++i) {
-      await database.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage!.add({"x": i.jsonNode}.jsonNode);
     }
 
-    expect(database.entries().map((e) => e.value['D']['x']).toList(), [0, 1, 2, 3, 4]);
+    expect((await tempStorage!.entries().readToList()).map((e) => e.value['D']['x']).toList(),
+        [0, 1, 2, 3, 4]);
   });
 
   test("subcontexts", () async {
-    final SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2');
-    expect(sq.length, 0);
+    tempStorage =
+        await SquirrelStorage.create(tempFile!);
+    expect(await tempStorage!.length(), 0);
 
-    final context = await sq.add({'context': 'Ночь. Улица. Фонарь. Аптека.'.jsonNode}.jsonNode);
+    final context = await tempStorage!
+        .add({'context': 'Ночь. Улица. Фонарь. Аптека.'.jsonNode}.jsonNode);
 
     await context.add({'event': 'a'.jsonNode}.jsonNode);
     await context.add({'event': 'b'.jsonNode}.jsonNode);
-    final entries = sq.entries().toList();
+    final entries = await tempStorage!.entries().toList();
     expect(entries.length, 3);
 
     // контекст содержит данные
@@ -84,14 +99,16 @@ void main() {
 
     expect(sending, isNot(equals((modified))));
 
-    final SquirrelStorage sq = await SquirrelStorage.create(boxName: 'test2', onSendingTrigger: sending, onModified: modified);
+    tempStorage = await SquirrelStorage.create(tempFile!,
+        onSendingTrigger: sending,
+        onModified: modified);
 
     // checking that method `create` and the constructor correctly assigned the handlers
     // to fields
-    expect(sq.onSendingTrigger, equals(sending));
-    expect(sq.onModified, equals(modified));
+    expect(tempStorage!.onSendingTrigger, equals(sending));
+    expect(tempStorage!.onModified, equals(modified));
 
-    final e = await (await sq.add('sub'.jsonNode)).add('subsub'.jsonNode);
+    final e = await (await tempStorage!.add('sub'.jsonNode)).add('subsub'.jsonNode);
 
     // checking that child objects also received the correct handlers
     expect(e.onSendingTrigger, equals(sending));
@@ -99,88 +116,93 @@ void main() {
   });
 
   test("adding json-incompatible data throws error", () async {
-    final Squirrel squirrel = await Squirrel.create(boxName: 'test3');
-    await squirrel.add(1.jsonNode);
-    await squirrel.add(1.5.jsonNode);
-    await squirrel.add('string'.jsonNode);
-    await squirrel.add({'key': 123.jsonNode}.jsonNode);
-    await squirrel.add([1.jsonNode, 2.jsonNode, 3.jsonNode].jsonNode);
+    tempStorage =
+        await Squirrel.create(tempFile!);
+    await tempStorage!.add(1.jsonNode);
+    await tempStorage!.add(1.5.jsonNode);
+    await tempStorage!.add('string'.jsonNode);
+    await tempStorage!.add({'key': 123.jsonNode}.jsonNode);
+    await tempStorage!.add([1.jsonNode, 2.jsonNode, 3.jsonNode].jsonNode);
 
     //expect(()=>squirrel.add(NonJsonSerializable()), throwsA(isA<JsonUnsupportedObjectError>()));
   });
 
   test("chunk get remove", () async {
-    final Squirrel sq = await Squirrel.create(boxName: 'test3');
-    expect(sq.length, 0);
+    tempStorage = await Squirrel.create(tempFile!);
+    expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 17; ++i) {
-      await sq.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage.add({"x": i.jsonNode}.jsonNode);
     }
 
     // убедимся, что данные не удаляются, когда мы просто get
     for (int i = 0; i < 3; ++i) {
-      final stub = sq.getChunk(10);
+      final stub = await tempStorage.getChunk(10);
       expect(stub.length, 10);
     }
 
-    final chunk1 = sq.getChunk(10);
+    final chunk1 = await tempStorage.getChunk(10);
     expect(chunk1.length, 10);
-    await sq.removeChunk(chunk1);
+    await tempStorage.removeChunk(chunk1);
 
-    final chunk2 = sq.getChunk(10);
+    final chunk2 = await tempStorage.getChunk(10);
     expect(chunk2.length, 7);
-    await sq.removeChunk(chunk2);
+    await tempStorage.removeChunk(chunk2);
 
-    final chunk3 = sq.getChunk(10);
+    final chunk3 = await tempStorage.getChunk(10);
     expect(chunk3.length, 0);
-    await sq.removeChunk(chunk3);
+    await tempStorage.removeChunk(chunk3);
   });
 
   test("onModified", () async {
     int calls = 0;
-    final Squirrel db = await Squirrel.create(boxName: 'test3', onModified: () => ++calls);
+    tempStorage = await Squirrel.create(tempFile!, onModified: () => ++calls);
 
     //db.onModified.(() { ++calls; });
-    await db.add({'a': 1.jsonNode}.jsonNode);
-    await db.add({'b': 5.jsonNode}.jsonNode);
+    await tempStorage.add({'a': 1.jsonNode}.jsonNode);
+    await tempStorage.add({'b': 5.jsonNode}.jsonNode);
     expect(calls, 2);
-    await db.add({'b': 5.jsonNode}.jsonNode);
-    await db.add({'b': 5.jsonNode}.jsonNode);
-    await db.add({'x': 55.jsonNode}.jsonNode);
+    await tempStorage.add({'b': 5.jsonNode}.jsonNode);
+    await tempStorage.add({'b': 5.jsonNode}.jsonNode);
+    await tempStorage.add({'x': 55.jsonNode}.jsonNode);
     expect(calls, 5);
   });
 
   test("takeChunks list", () async {
-    final Squirrel database = await Squirrel.create(boxName: 'test');
-    expect(database.length, 0);
+    tempStorage =
+        await Squirrel.create(tempFile!);
+    expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 17; ++i) {
-      await database.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage.add({"x": i.jsonNode}.jsonNode);
     }
 
     //await Future.delayed(const Duration(milliseconds: 500));
 
-    expect(database.length, 17);
+    expect(await tempStorage.length(), 17);
 
-    final chunks = await database.takeChunks(itemsPerChunk: 10).toList();
+    final chunks = await tempStorage.takeChunks(itemsPerChunk: 10).toList();
     expect(chunks.length, 2);
     expect(chunks[0].length, 10);
     expect(chunks[1].length, 7);
 
-    expect(database.length, 0);
+    expect(await tempStorage.length(), 0);
   });
 
   test("takeChunks maxTotal", () async {
-    final SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
-    expect(database.length, 0);
+    tempStorage =
+        await SquirrelStorage.create(tempFile!);
+    expect(await tempStorage.length(), 0);
 
     for (int i = 0; i < 50; ++i) {
-      await database.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage.add({"x": i.jsonNode}.jsonNode);
     }
 
-    expect(database.length, 50);
+    expect(await tempStorage.length(), 50);
 
-    final chunks = await database.takeChunks(itemsPerChunk: 10, maxItemsTotal: 42).toList();
+    final chunks = await tempStorage
+        .takeChunks(itemsPerChunk: 10, maxItemsTotal: 42)
+        .toList();
     expect(chunks.length, 5);
     int sum = 0;
     for (var c in chunks) {
@@ -194,30 +216,31 @@ void main() {
     expect(chunks[3].length, 10);
     expect(chunks[4].length, 2);
 
-    expect(database.length, 8);
+    expect(await tempStorage.length(), 8);
   });
 
   test("takeChunks removes only after next chunk is requested", () async {
-    final SquirrelStorage database = await SquirrelStorage.create(boxName: 'test');
-    expect(database.length, 0);
+    tempStorage =
+        await SquirrelStorage.create(tempFile!);
+    expect(await tempStorage!.length(), 0);
 
     for (int i = 0; i < 27; ++i) {
-      await database.add({"x": i.jsonNode}.jsonNode);
+      await tempStorage!.add({"x": i.jsonNode}.jsonNode);
     }
 
     int i = 0;
-    await for (final chunk in database.takeChunks(itemsPerChunk: 10)) {
+    await for (final chunk in tempStorage!.takeChunks(itemsPerChunk: 10)) {
       switch (i) {
         case 0:
-          expect(database.length, 27);
+          expect(await tempStorage!.length(), 27);
           expect(chunk.length, 10);
           break;
         case 1:
-          expect(database.length, 17);
+          expect(await tempStorage!.length(), 17);
           expect(chunk.length, 10);
           break;
         case 2:
-          expect(database.length, 7);
+          expect(await tempStorage!.length(), 7);
           expect(chunk.length, 7);
           break;
         default:
@@ -226,7 +249,7 @@ void main() {
 
       ++i;
     }
-    expect(database.length, 0);
+    expect(await tempStorage.length(), 0);
     expect(i, 3);
   });
 }

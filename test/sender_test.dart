@@ -4,7 +4,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:hive/hive.dart';
+
 import 'package:jsontree/jsontree.dart';
 import 'package:squirrel/squirrel.dart';
 import 'package:test/test.dart';
@@ -25,22 +25,30 @@ class CallsCounting {
 }
 
 void main() {
+  File? tempFile;
+  late SquirrelStorage tempStorage;
   setUp(() {
-    Hive.init(Directory.systemTemp.createTempSync().path);
+    tempFile = File("temp/_temp_test_${DateTime.now().microsecondsSinceEpoch}.db");
   });
 
-  tearDown(() {
-    Hive.close();
+  tearDown(() async {
+    await tempStorage.close();
+    try {
+      tempFile!.deleteSync();
+    } on FileSystemException {
+      // pass
+    }
+    tempFile = null;
   });
 
   test("handleOnModified", () async {
     final cc = CallsCounting();
-    late SquirrelStorage database;
-    database = await SquirrelStorage.create(
-        boxName: 'test', onModified: () => cc.sender.handleModified(database));
+    tempStorage = await SquirrelStorage.create(
+        tempFile!,
+        onModified: () => cc.sender.handleModified(tempStorage));
 
     for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i.jsonNode}.jsonNode);
+      await tempStorage.add({'data': i.jsonNode}.jsonNode);
     }
 
     expect(cc.calls, 5);
@@ -50,18 +58,18 @@ void main() {
   test("handleTrigger", () async {
     final cc = CallsCounting();
 
-    late SquirrelStorage database;
-    database = await SquirrelStorage.create(
-        boxName: 'test', onSendingTrigger: () => cc.sender.handleSendingTrigger(database));
+    tempStorage = await SquirrelStorage.create(
+        tempFile!,
+        onSendingTrigger: () => cc.sender.handleSendingTrigger(tempStorage));
 
     for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i.jsonNode}.jsonNode);
+      await tempStorage.add({'data': i.jsonNode}.jsonNode);
     }
 
     expect(cc.calls, 0);
     expect(cc.sent, 0);
 
-    await database.triggerSending();
+    await tempStorage.triggerSending();
 
     expect(cc.calls, 6);
     expect(cc.sent, 55);
@@ -70,20 +78,20 @@ void main() {
   test("handleTrigger and onModified", () async {
     final cc = CallsCounting();
 
-    late SquirrelStorage database;
-    database = await SquirrelStorage.create(
-        boxName: 'test',
-        onModified: () => cc.sender.handleModified(database),
-        onSendingTrigger: () => cc.sender.handleSendingTrigger(database));
+
+    tempStorage = await SquirrelStorage.create(
+        tempFile!,
+        onModified: () => cc.sender.handleModified(tempStorage),
+        onSendingTrigger: () => cc.sender.handleSendingTrigger(tempStorage));
 
     for (int i = 0; i < 55; ++i) {
-      await database.add({'data': i.jsonNode}.jsonNode);
+      await tempStorage.add({'data': i.jsonNode}.jsonNode);
     }
 
     expect(cc.calls, 5);
     expect(cc.sent, 50);
 
-    await database.triggerSending();
+    await tempStorage.triggerSending();
 
     expect(cc.calls, 6);
     expect(cc.sent, 55);

@@ -12,6 +12,7 @@ dependencies:
   meta: ^1.7.0
   synchronized: ^3.0.0
   sembast: ^3.2.0+1
+  #path_provider: ^2.0.11
   #//hive: ^2.0.4
   slugid: ^1.1.0
   jsontree: ^0.1.0
