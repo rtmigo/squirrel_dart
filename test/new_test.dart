@@ -29,7 +29,7 @@ void main() {
 
   test("first", () async {
     tempStorage = await SquirrelStorage.create(tempFile!);
-    expect(await tempStorage!.length(), 0);
+    expect(await tempStorage.length(), 0);
 
     await tempStorage.add({'event': 'a'.jsonNode}.jsonNode);
     await tempStorage.add({'event': 'b'.jsonNode}.jsonNode);
@@ -47,6 +47,7 @@ void main() {
       expect(e.value['T'], isA<int>());
       expect(e.value['P'], isNull);
     }
+
 
     // данные конкретно такие
     expect(entries[0].value['D'], {'event': 'a'});
