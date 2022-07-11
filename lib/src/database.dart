@@ -39,24 +39,15 @@ class SquirrelDb {
   Future<List<int>> readKeys([Transaction? txn]) async =>
       (await _records.findKeys(txn ?? database)).map((e) => e as int).toList();
 
-  Future<List<MapEntry<int, dynamic>>> readOldestRecords(int n) async {
-    // todo maybe we can just iterate records (and keys will be sorted?)
-    late List<int> keys;
-    late List<dynamic> records;
-    await this.database.transaction((transaction) async {
-      keys = ((await readKeys(transaction))..sort())
-          .take(n)
+  Future<List<MapEntry<int, dynamic>>> readOldestRecords({int? limit}) async =>
+      // сортируем ключи по возрастанию, берем limit первых ключей
+      (await this._records.find(database,
+              finder: Finder(
+                  sortOrders: [SortOrder(Field.key, true)], limit: limit)))
+          // мапим найденное в список
+          .map((RecordSnapshot<dynamic, dynamic> e) =>
+              MapEntry(e.key as int, e.value))
           .toList(growable: false);
-      records = await _records.records(keys).get(this.database);
-    });
-    
-    assert(keys.length == records.length);
-    final result = <MapEntry<int, dynamic>>[];
-    for (int i = 0; i < keys.length; ++i) {
-      result.add(MapEntry(keys[i], records[i]));
-    }
-    return result;
-  }
 
   Future<dynamic> read(int key) => _records.record(key).get(this.database);
 
