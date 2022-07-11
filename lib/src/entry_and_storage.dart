@@ -108,7 +108,7 @@ class SquirrelStorage extends SquirrelEntry {
     VoidCallback? onSendingTrigger,
     //bool temp = false
   }) async {
-    return SquirrelStorage._(await SquirrelDb.create(file),
+    return SquirrelStorage._(await SquirrelDb.open(file),
         // Hive.openBox(boxName),
         onModified: onModified,
         onSendingTrigger: onSendingTrigger);
@@ -131,7 +131,7 @@ class SquirrelStorage extends SquirrelEntry {
   Future<SquirrelChunk> readChunk([int n = 100]) async {
     //  .readEntries().take(n).readToList()
     return UnmodifiableMapView(
-        Map.fromEntries(await this._db.readFirstRecords(n)));
+        Map.fromEntries(await this._db.readOldestRecords(n)));
   }
 
   Future<void> deleteChunk(SquirrelChunk chunk) async {
