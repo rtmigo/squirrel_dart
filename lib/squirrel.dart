@@ -4,23 +4,22 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
-import 'package:hive/hive.dart';
 import 'package:jsontree/jsontree.dart';
 import 'package:meta/meta.dart';
 import 'package:slugid/slugid.dart';
+import 'package:squirrel/src/database.dart';
 import 'package:synchronized/synchronized.dart';
-
-const _defaultBoxName = 'squirrel';
 
 class _MonotonicNow {
   final DateTime _startTime = DateTime.now().toUtc();
   final Stopwatch _stopwatch = Stopwatch()..start();
 
-  /// Возвращает время, которым должно быть датировано событие, если оно произошло "прямо сейчас".
-  /// В отличие от `DateTime.now()`, тут мы полагаемся на [Stopwatch] и поэтому надеемся
-  /// на монотонное возрастание.
+  /// Возвращает время, которым должно быть датировано событие, если оно
+  /// произошло "прямо сейчас". В отличие от `DateTime.now()`, тут мы полагаемся
+  /// на [Stopwatch] и поэтому надеемся на монотонное возрастание.
   DateTime now() {
     return this._startTime.add(this._stopwatch.elapsed);
   }
@@ -30,7 +29,8 @@ typedef SquirrelChunk = UnmodifiableMapView<int, dynamic>;
 typedef VoidCallback = FutureOr<void> Function();
 
 class SquirrelEntry {
-  final Box<Map<String, dynamic>> box;
+  final SquirrelDb _db;
+
   final String? id;
 
   @protected
@@ -40,10 +40,10 @@ class SquirrelEntry {
   final VoidCallback? onSendingTrigger;
 
   SquirrelEntry(
-      {required this.box,
+      {required SquirrelDb db,
       required this.id,
       required this.onModified,
-      required this.onSendingTrigger});
+      required this.onSendingTrigger}): _db = db;
 
   Future<String> _putRecordToDb(String? parentId, JsonNode data) async {
     jsonEncode(data); // just checking the data can be encoded
@@ -52,9 +52,10 @@ class SquirrelEntry {
       'I': id.jsonNode,
       'T': _monoTime.now().microsecondsSinceEpoch.jsonNode,
       'P': parentId == null ? JsonNull() : parentId.jsonNode,
-      'D': data}.jsonNode;
+      'D': data
+    }.jsonNode;
     //jsonEncode(object)
-    await this.box.add(rec.toJson());
+    await this._db.writeRecord(rec);
     this.onModified?.call();
 
     return id;
@@ -87,7 +88,7 @@ class SquirrelEntry {
   Future<SquirrelEntry> add(JsonNode data) async {
     final String id = await this._putRecordToDb(this.id, data);
     return SquirrelEntry(
-        box: this.box,
+        db: this._db,
         id: id,
         onModified: this.onModified,
         onSendingTrigger: this.onSendingTrigger);
@@ -100,76 +101,99 @@ class SquirrelEntry {
     }
   }
 
-  // @Deprecated("Use squirrel.add()") // since 2022-01
-  // Future<String> addEvent(Map<String, dynamic> data) async {
-  //   return (await add(data)).id!;
-  // }
-  //
-  // @Deprecated("Use context = squirrel.add()") // since 2022-01
-  // Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
-  //   return add(data);
-  //   //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
-  //   //return SquirrelEntry(storage: this.storage, contextId: subContextId);
-  // }
+// @Deprecated("Use squirrel.add()") // since 2022-01
+// Future<String> addEvent(Map<String, dynamic> data) async {
+//   return (await add(data)).id!;
+// }
+//
+// @Deprecated("Use context = squirrel.add()") // since 2022-01
+// Future<SquirrelEntry> addContext(Map<String, dynamic> data) {
+//   return add(data);
+//   //final subContextId = await this.addEvent(data); //this._putRecordToDb(null, data);
+//   //return SquirrelEntry(storage: this.storage, contextId: subContextId);
+// }
+}
+
+extension StreamExt<T> on Stream<T> {
+  Future<List<T>> readToList() async {
+    final lst = <T>[];
+    await for (final x in this) {
+      lst.add(x);
+    }
+    return lst;
+  }
 }
 
 class SquirrelStorage extends SquirrelEntry {
-  SquirrelStorage._(Box<Map<String, dynamic>> box, {VoidCallback? onModified, VoidCallback? onSendingTrigger})
-      : super(box: box, id: null, onModified: onModified, onSendingTrigger: onSendingTrigger);
+  SquirrelStorage._(SquirrelDb box,
+      {VoidCallback? onModified, VoidCallback? onSendingTrigger})
+      : super(
+            db: box,
+            id: null,
+            onModified: onModified,
+            onSendingTrigger: onSendingTrigger);
 
-  /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await Hive.initFlutter`.
+  /// Перед вызовом этого метода нужно еще сделать `Hive.init` или `await
+  /// Hive.initFlutter`.
   ///
-  /// Здесь это не делается автоматически, поскольку база Hive едина для всего приложения
-  /// (и в этом плане у меня выбора нет). Ее стоит инициализировать отдельно и осознанно:
-  /// передавая ей путь, например.
-  static Future<SquirrelStorage> create({
-    String boxName = _defaultBoxName,
+  /// Здесь это не делается автоматически, поскольку база Hive едина для всего
+  /// приложения (и в этом плане у меня выбора нет). Ее стоит инициализировать
+  /// отдельно и осознанно: передавая ей путь, например.
+  static Future<SquirrelStorage> create(
+    File file, {
     VoidCallback? onModified,
     VoidCallback? onSendingTrigger,
+    //bool temp = false
   }) async {
-    return SquirrelStorage._(await Hive.openBox(boxName),
-        onModified: onModified, onSendingTrigger: onSendingTrigger);
+    return SquirrelStorage._(await SquirrelDb.create(file),
+        // Hive.openBox(boxName),
+        onModified: onModified,
+        onSendingTrigger: onSendingTrigger);
   }
 
-  Iterable<MapEntry<int, dynamic>> entries() sync* {
-    for (final k in this.box.keys) {
-      yield MapEntry<int, dynamic>(k as int, this.box.get(k));
+  Stream<MapEntry<int, dynamic>> readEntries() async* {
+    for (final k in (await this._db.readKeys())..sort()) {
+      final dynamic entry = await this._db.read(k);
+      yield MapEntry<int, dynamic>(k, entry);
     }
   }
 
   Future<void> clear() async {
-    await this.box.clear();
+    await this._db.deleteAll();
   }
 
-  int get length {
-    return this.box.length;
+  Future<void> close() => this._db.database.close();
+
+  Future<int> length() => this._db.readRecordsCount();
+
+  Future<SquirrelChunk> readChunk([int n = 100]) async {
+    return UnmodifiableMapView(
+        Map.fromEntries(await this.readEntries().take(n).readToList()));
   }
 
-  SquirrelChunk getChunk([int n = 100]) {
-    return UnmodifiableMapView(Map.fromEntries(this.entries().take(n)));
+  Future<void> deleteChunk(SquirrelChunk chunk) async {
+    return this._db.deleteByKeys(chunk.keys);
   }
 
-  Future<void> removeChunk(SquirrelChunk chunk) {
-    return this.box.deleteAll(chunk.keys);
-  }
-
-  /// Возвращает данные порциями. Каждый раз, когда мы запрашиваем новый элемент, все данные
-  /// предыдущего элемента удаляются из базы.
+  /// Возвращает данные порциями. Каждый раз, когда мы запрашиваем новый
+  /// элемент, все данные предыдущего элемента удаляются из базы.
   ///
-  /// Перебрав все доступные элементы мы обычно запрашиваем "следующий" элемент, но получаем сигнал
-  /// окончания итерации - прямо или косвенно. То есть, запрос происходит и после последнего
-  /// элемента. А значит, если прокрутить полный цикл, вроде `takeChunks().toList()`, то в базе
-  /// не останется буквально ни одного элемента.
+  /// Перебрав все доступные элементы мы обычно запрашиваем "следующий" элемент,
+  /// но получаем сигнал окончания итерации - прямо или косвенно. То есть,
+  /// запрос происходит и после последнего элемента. А значит, если прокрутить
+  /// полный цикл, вроде `takeChunks().toList()`, то в базе не останется
+  /// буквально ни одного элемента.
   ///
-  /// Метод может использоваться, чтобы выгрузить все данные из локальной базы в какое-то другое
-  /// место, например, сервер.
+  /// Метод может использоваться, чтобы выгрузить все данные из локальной базы в
+  /// какое-то другое место, например, сервер.
   ///
   /// ```dart
   /// await for (var chunk in db.takeChunks()) {
   ///   await sendToServer(chunk);
   /// }
   /// ```
-  Stream<SquirrelChunk> takeChunks({int itemsPerChunk = 100, int? maxItemsTotal}) async* {
+  Stream<SquirrelChunk> readChunks(
+      {int itemsPerChunk = 100, int? maxItemsTotal}) async* {
     int itemsTaken = 0;
     for (;;) {
       int maxPerNextChunk = itemsPerChunk;
@@ -177,17 +201,18 @@ class SquirrelStorage extends SquirrelEntry {
         maxPerNextChunk = min(maxPerNextChunk, maxItemsTotal - itemsTaken);
       }
 
-      final chunk = this.getChunk(maxPerNextChunk);
+      final chunk = await this.readChunk(maxPerNextChunk);
       if (chunk.isEmpty) {
         break;
       }
       yield chunk;
       itemsTaken += chunk.length;
-      await this.removeChunk(chunk);
+      await this.deleteChunk(chunk);
     }
   }
 
-  @Deprecated("Use object methods directly (squirrel.add instead squirrel.root.add)") // 2022-01
+  @Deprecated(
+      "Use object methods directly (squirrel.add instead squirrel.root.add)") // 2022-01
   SquirrelEntry get root => this;
 }
 
@@ -228,18 +253,19 @@ class SquirrelSender {
       // Иначе могло бы случиться, что в ходе отправки появились новые элементы. Например,
       // chunkSize=100, к концу отправки их уже 102. И поэтому мы отправляем чанк размером всего
       // 2 элемента.
-      final int maxItemsTotal = storage.length;
+      final int maxItemsTotal = await storage.length();
       int gotItemsSum = 0;
 
-      await for (final chunk
-          in storage.takeChunks(itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
+      await for (final chunk in storage.readChunks(
+          itemsPerChunk: chunkSize, maxItemsTotal: maxItemsTotal)) {
         assert((gotItemsSum += chunk.length) <= maxItemsTotal);
         await this.send(chunk.values.toList(growable: false));
       }
     });
   }
 
-  Future<void> handleSendingTrigger(SquirrelStorage storage) => _synchronizedSendAll(storage);
+  Future<void> handleSendingTrigger(SquirrelStorage storage) =>
+      _synchronizedSendAll(storage);
 
   void handleModified(SquirrelStorage storage) async {
     // работа этого метода может быть долгой и асинхронной. Предотвращаю параллельные запуски
@@ -253,22 +279,24 @@ class SquirrelSender {
       return;
     }
 
-    if (storage.length >= chunkSize) {
+    if (await storage.length() >= chunkSize) {
       await this._synchronizedSendAll(storage);
     }
   }
 
   /// Creates a [Squirrel] instance with handlers assigned to a [SquirrelSender].
-  static Future<Squirrel> create(SendCallback sendToServer,
-      {String boxName = _defaultBoxName}) async {
+  static Future<Squirrel> create(
+      File file,
+      SendCallback sendToServer,
+      ) async {
     // todo test this function
     final sender = SquirrelSender(send: sendToServer);
     late Squirrel squirrel;
-    squirrel = await Squirrel.create(
-      onModified: () => sender.handleModified(squirrel),
-      onSendingTrigger: () => sender.handleSendingTrigger(squirrel),
-      boxName: boxName  // todo test this param
-    );
+    squirrel = await Squirrel.create(file,
+        onModified: () => sender.handleModified(squirrel),
+        onSendingTrigger: () => sender.handleSendingTrigger(squirrel),
+        //boxName: boxName // todo test this param
+        );
     return squirrel;
   }
 }
