@@ -146,17 +146,14 @@ Future<void> sendToServer(List<dynamic> chunk) async {
   // the function should throw an exception.
 }
 
-void main
-(
-)
-
-final squirrel = SquirrelSender.create(sendToServer);
-// ...
-// use Squirrel as usual
+void main() {
+  final squirrel = SquirrelSender.create(sendToServer);
+  // ...
+  // use Squirrel as usual
 }
 ```
 
 ## License
 
-Copyright © 2022 [Artёm IG](https://github.com/rtmigo). Released under
+Copyright © 2022 [Artёm iG](https://github.com/rtmigo). Released under
 the [MIT License](LICENSE).
