@@ -13,7 +13,7 @@ dependencies:
   synchronized: ^3.0.0
   sembast: ^3.2.0+1
   slugid: ^1.1.0
-  jsontree: ^0.1.0
+  jsontree: ^0.3.0
     #git: https://github.com/rtmigo/jsontree_dart
 
 dev_dependencies:
